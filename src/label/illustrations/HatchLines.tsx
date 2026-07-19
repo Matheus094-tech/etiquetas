@@ -8,6 +8,7 @@ interface HatchLinesProps {
   angle?: number;
   stroke?: string;
   strokeWidth?: number;
+  opacity?: number;
 }
 
 /**
@@ -24,6 +25,7 @@ export function HatchLines({
   angle = 45,
   stroke = "#1a1a1a",
   strokeWidth = 2,
+  opacity = 1,
 }: HatchLinesProps) {
   const diagonal = Math.sqrt(width * width + height * height);
   const count = Math.ceil(diagonal / spacing);
@@ -49,7 +51,7 @@ export function HatchLines({
   }
 
   return (
-    <g clipPath={`url(#${clipPathId})`}>
+    <g clipPath={`url(#${clipPathId})`} opacity={opacity}>
       {lines.map((line, index) => (
         <line
           key={index}
