@@ -2,68 +2,117 @@ import { HatchLines } from "./HatchLines";
 
 const INK = "#1a1a1a";
 
-/** Potatoes paired with a mound of ground meat and a sprig of herbs, dense vintage engraving line style. */
+const POTATOES: { cx: number; cy: number; r: number; eyes: [number, number][] }[] = [
+  {
+    cx: 72,
+    cy: 134,
+    r: 27,
+    eyes: [
+      [64, 126],
+      [80, 138],
+      [70, 146],
+    ],
+  },
+  {
+    cx: 118,
+    cy: 106,
+    r: 23,
+    eyes: [
+      [110, 100],
+      [126, 110],
+    ],
+  },
+  {
+    cx: 168,
+    cy: 116,
+    r: 24,
+    eyes: [
+      [160, 110],
+      [176, 122],
+    ],
+  },
+  {
+    cx: 193,
+    cy: 146,
+    r: 21,
+    eyes: [
+      [186, 140],
+      [200, 150],
+    ],
+  },
+  {
+    cx: 94,
+    cy: 160,
+    r: 22,
+    eyes: [
+      [88, 154],
+      [100, 166],
+    ],
+  },
+];
+
+const MEAT_CHUNKS = [
+  "M96,142 L116,118 L142,126 L136,154 L110,160 Z",
+  "M136,104 L160,94 L176,112 L158,130 L140,124 Z",
+];
+
+/** A bowl of whole potatoes with meat chunks and a parsley sprig, dense vintage engraving line style. */
 export function PotatoBeefIllustration() {
   return (
     <g fill="none" stroke={INK} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
       <defs>
-        <clipPath id="potato-clip-1">
-          <path d="M45,150 C28,140 25,113 45,97 C63,82 92,84 101,103 C116,111 112,140 92,154 C76,164 58,161 45,150 Z" />
+        <clipPath id="pb-clip-bowl">
+          <path d="M32,164 C32,190 68,210 120,210 C172,210 208,190 208,164 L32,164 Z" />
         </clipPath>
-        <clipPath id="potato-clip-2">
-          <path d="M115,205 C100,197 98,176 115,164 C130,152 154,154 161,169 C173,176 169,199 152,209 C139,217 125,214 115,205 Z" />
+        <clipPath id="pb-clip-potatoes">
+          {POTATOES.map((potato, index) => (
+            <circle key={index} cx={potato.cx} cy={potato.cy} r={potato.r} />
+          ))}
         </clipPath>
-        <clipPath id="potato-clip-mound">
-          <path d="M120,95 C116,78 128,64 146,64 C162,64 174,76 170,92 C182,100 178,117 162,124 C144,132 118,126 116,110 C114,102 116,98 120,95 Z" />
+        <clipPath id="pb-clip-meat">
+          {MEAT_CHUNKS.map((d, index) => (
+            <path key={index} d={d} />
+          ))}
         </clipPath>
       </defs>
 
-      <HatchLines x={25} y={82} width={91} height={82} clipPathId="potato-clip-1" spacing={7} angle={30} strokeWidth={1.4} />
-      <HatchLines x={25} y={82} width={91} height={82} clipPathId="potato-clip-1" spacing={12} angle={110} strokeWidth={0.9} opacity={0.5} />
-      <path d="M45,150 C28,140 25,113 45,97 C63,82 92,84 101,103 C116,111 112,140 92,154 C76,164 58,161 45,150 Z" />
-      <path d="M50,144 C38,134 37,116 50,104" strokeWidth={1.3} opacity={0.65} />
-      <circle cx="63" cy="112" r="2.6" fill={INK} stroke="none" />
-      <circle cx="82" cy="130" r="2.6" fill={INK} stroke="none" />
-      <circle cx="80" cy="104" r="2.6" fill={INK} stroke="none" />
-      <circle cx="55" cy="128" r="2" fill={INK} stroke="none" />
-      <path d="M60,109 C62,107 65,107 67,109" strokeWidth={1} />
-      <path d="M79,127 C81,125 84,125 86,127" strokeWidth={1} />
+      {/* bowl */}
+      <HatchLines x={32} y={164} width={176} height={46} clipPathId="pb-clip-bowl" spacing={7} angle={50} strokeWidth={1.1} opacity={0.5} />
+      <path d="M32,164 C32,190 68,210 120,210 C172,210 208,190 208,164" />
+      <path d="M42,168 C42,188 72,203 120,203" strokeWidth={1.3} opacity={0.6} />
+      <ellipse cx="120" cy="164" rx="76" ry="16" />
+      <ellipse cx="120" cy="164" rx="60" ry="11" strokeWidth={1.3} opacity={0.6} />
 
-      <HatchLines x={98} y={152} width={71} height={65} clipPathId="potato-clip-2" spacing={7} angle={150} strokeWidth={1.4} />
-      <HatchLines x={98} y={152} width={71} height={65} clipPathId="potato-clip-2" spacing={12} angle={70} strokeWidth={0.9} opacity={0.5} />
-      <path d="M115,205 C100,197 98,176 115,164 C130,152 154,154 161,169 C173,176 169,199 152,209 C139,217 125,214 115,205 Z" />
-      <path d="M119,199 C108,190 107,176 118,167" strokeWidth={1.3} opacity={0.65} />
-      <circle cx="130" cy="188" r="2.4" fill={INK} stroke="none" />
-      <circle cx="148" cy="196" r="2.4" fill={INK} stroke="none" />
-      <circle cx="141" cy="174" r="2" fill={INK} stroke="none" />
+      {/* potatoes */}
+      <HatchLines x={45} y={83} width={169} height={99} clipPathId="pb-clip-potatoes" spacing={7} angle={30} strokeWidth={1.4} />
+      <HatchLines x={45} y={83} width={169} height={99} clipPathId="pb-clip-potatoes" spacing={12} angle={115} strokeWidth={0.9} opacity={0.5} />
+      {POTATOES.map((potato, index) => (
+        <g key={index}>
+          <circle cx={potato.cx} cy={potato.cy} r={potato.r} />
+          {potato.eyes.map(([ex, ey], eyeIndex) => (
+            <circle key={eyeIndex} cx={ex} cy={ey} r={2.2} fill={INK} stroke="none" />
+          ))}
+        </g>
+      ))}
 
-      <HatchLines x={114} y={64} width={68} height={68} clipPathId="potato-clip-mound" spacing={6} angle={60} strokeWidth={1.4} />
-      <HatchLines x={114} y={64} width={68} height={68} clipPathId="potato-clip-mound" spacing={10} angle={150} strokeWidth={0.9} opacity={0.5} />
-      <path d="M120,95 C116,78 128,64 146,64 C162,64 174,76 170,92 C182,100 178,117 162,124 C144,132 118,126 116,110 C114,102 116,98 120,95 Z" />
-      <path d="M128,92 C125,79 134,68 148,68" strokeWidth={1.3} opacity={0.65} />
-      <path d="M132,95 C130,90 134,86 139,87 C144,88 146,93 142,97 C138,101 133,100 132,95 Z" strokeWidth={1.6} />
-      <path d="M150,80 C148,75 152,71 157,72 C162,73 164,78 160,82 C156,86 151,85 150,80 Z" strokeWidth={1.6} />
-      <path d="M143,110 C141,105 145,101 150,102 C155,103 157,108 153,112 C149,116 145,115 143,110 Z" strokeWidth={1.4} />
+      {/* meat chunks */}
+      <HatchLines x={96} y={94} width={80} height={66} clipPathId="pb-clip-meat" spacing={6} angle={65} strokeWidth={1.5} />
+      {MEAT_CHUNKS.map((d, index) => (
+        <path key={index} d={d} strokeWidth={2.2} />
+      ))}
 
-      <g strokeWidth={1.6} opacity={0.85}>
-        <path d="M182,164 C188,148 192,132 190,116" />
+      {/* parsley sprig */}
+      <g strokeWidth={1.6}>
+        <path d="M132,86 C130,72 134,60 130,48" />
         {[
-          { at: 0.15, angle: -35 },
-          { at: 0.32, angle: 30 },
-          { at: 0.48, angle: -32 },
-          { at: 0.62, angle: 34 },
-          { at: 0.78, angle: -28 },
-          { at: 0.92, angle: 26 },
-        ].map((leaflet, index) => {
-          const px = 182 - leaflet.at * 8;
-          const py = 164 - leaflet.at * 48;
-          return (
-            <path
-              key={index}
-              d={`M${px},${py} q${leaflet.angle > 0 ? 10 : -10},-4 ${leaflet.angle > 0 ? 14 : -14},-10`}
-              strokeWidth={1.3}
-            />
-          );
+          { at: 0.2, dx: -12, dy: -6 },
+          { at: 0.42, dx: 12, dy: -6 },
+          { at: 0.64, dx: -11, dy: -6 },
+          { at: 0.86, dx: 10, dy: -6 },
+        ].map((leaf, index) => {
+          const px = 132 - leaf.at * 2;
+          const py = 86 - leaf.at * 38;
+          return <path key={index} d={`M${px},${py} q${leaf.dx},${leaf.dy} ${leaf.dx * 1.6},${leaf.dy}`} strokeWidth={1.3} />;
         })}
       </g>
     </g>

@@ -13,29 +13,30 @@ export interface VintageLabelProps {
   className?: string;
 }
 
-const WIDTH = 1200;
-const HEIGHT = 750;
+/** Official M&S label proportion: 3:1 (width:height). */
+const WIDTH = 1800;
+const HEIGHT = 600;
 const INK = "#1a1a1a";
 const SERIF_FONT = 'Georgia, "Times New Roman", Times, serif';
 
 /** Outer frame: a rounded rectangle whose corners "pinch" inward near the tip — the classic vintage tag/plant-marker corner treatment. */
-const FRAME = { x: 20, y: 20, width: 1160, height: 710 };
-const FRAME_D_OUTER = 64;
-const FRAME_GAP = 16;
+const FRAME = { x: 24, y: 24, width: 1752, height: 552 };
+const FRAME_D_OUTER = 50;
+const FRAME_GAP = 14;
 const FRAME_D_INNER = FRAME_D_OUTER - FRAME_GAP;
 
-const MEDALLION = { cx: 196, cy: 375, scallopR: 112, ringR: 96 };
-const ILLUSTRATION_SLOT = { x: 820, y: 150, width: 310, height: 450 };
-const TEXT_ZONE = { x1: 350, x2: 800, centerX: 575 };
+const MEDALLION = { cx: 168, cy: 300, scallopR: 100 };
+const ILLUSTRATION_SLOT = { x: 1300, y: 108, width: 390, height: 384 };
+const TEXT_ZONE = { x1: 330, x2: 1240, centerX: 785 };
 
-const TOP_RULE_Y = 102;
-const BOTTOM_RULE_Y = 648;
-const RULE_X1 = 150;
-const RULE_X2 = 1050;
+const TOP_RULE_Y = 80;
+const BOTTOM_RULE_Y = 520;
+const RULE_X1 = 128;
+const RULE_X2 = 1672;
 
-const NAME_CENTER_Y = 300;
-const DIVIDER_Y = 420;
-const DESCRIPTION_Y = 468;
+const NAME_CENTER_Y = 270;
+const DIVIDER_Y = 378;
+const DESCRIPTION_Y = 426;
 
 const NAME_PLACEHOLDER = "NOME DO ALIMENTO";
 const WEIGHT_PLACEHOLDER = "PESO";
@@ -90,23 +91,21 @@ function pinchedFramePath(x: number, y: number, width: number, height: number, d
   ].join(" ");
 }
 
-/** A scalloped (flower/seal-edge) circle outline, built from quadratic bumps. */
-function scallopedCirclePath(cx: number, cy: number, r: number, bump: number, count: number): string {
-  const step = (Math.PI * 2) / count;
+/**
+ * A scalloped seal-edge circle outline with sharp, slightly irregular teeth
+ * (alternating valley/peak radius joined by straight segments) — matching
+ * the M&S medallion's jagged stamp-like border rather than soft rounded bumps.
+ */
+function scallopedCirclePath(cx: number, cy: number, r: number, toothDepth: number, count: number): string {
+  const points = count * 2;
+  const step = (Math.PI * 2) / points;
   const parts: string[] = [];
-  for (let i = 0; i <= count; i += 1) {
+  for (let i = 0; i < points; i += 1) {
     const angle = i * step;
-    const x = cx + Math.cos(angle) * r;
-    const y = cy + Math.sin(angle) * r;
-    if (i === 0) {
-      parts.push(`M ${x},${y}`);
-      continue;
-    }
-    const midAngle = angle - step / 2;
-    const bumpR = (r + bump) * 1.18;
-    const cxp = cx + Math.cos(midAngle) * bumpR;
-    const cyp = cy + Math.sin(midAngle) * bumpR;
-    parts.push(`Q ${cxp},${cyp} ${x},${y}`);
+    const radius = i % 2 === 0 ? r : r + toothDepth;
+    const x = cx + Math.cos(angle) * radius;
+    const y = cy + Math.sin(angle) * radius;
+    parts.push(`${i === 0 ? "M" : "L"} ${x},${y}`);
   }
   return `${parts.join(" ")} Z`;
 }
@@ -151,29 +150,32 @@ function DecorativeRule({ x, y, width, flip = 1 }: DecorativeRuleProps) {
 }
 
 function Medallion() {
-  const { cx, cy, scallopR, ringR } = MEDALLION;
-  const scallopPath = scallopedCirclePath(cx, cy, scallopR, 9, 20);
+  const { cx, cy, scallopR } = MEDALLION;
+  const scallopPath = scallopedCirclePath(cx, cy, scallopR, 11, 20);
+  const ringR = scallopR - 14;
+  const innerRingR = ringR - 5;
 
   return (
     <g>
-      <path d={scallopPath} fill="none" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+      <path d={scallopPath} fill="none" stroke={INK} strokeWidth={2.6} strokeLinejoin="round" />
       <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={INK} strokeWidth={1.6} />
+      <circle cx={cx} cy={cy} r={innerRingR} fill="none" stroke={INK} strokeWidth={1} opacity={0.75} />
 
-      <DecorativeRule x={cx} y={cy - 32} width={116} flip={1} />
+      <DecorativeRule x={cx} y={cy - 28} width={100} flip={1} />
       <text
         x={cx}
-        y={cy + 12}
+        y={cy + 10}
         textAnchor="middle"
         dominantBaseline="middle"
         fontFamily={SERIF_FONT}
         fontWeight={700}
-        fontSize={52}
+        fontSize={44}
         fill={INK}
         letterSpacing={1}
       >
         M&amp;S
       </text>
-      <DecorativeRule x={cx} y={cy + 46} width={116} flip={-1} />
+      <DecorativeRule x={cx} y={cy + 40} width={100} flip={-1} />
     </g>
   );
 }
@@ -199,8 +201,8 @@ export const VintageLabel = forwardRef<SVGSVGElement, VintageLabelProps>(functio
     () =>
       fitText(displayName || NAME_PLACEHOLDER, {
         maxWidth: TEXT_ZONE.x2 - TEXT_ZONE.x1 - 20,
-        maxFontSize: 156,
-        minFontSize: 46,
+        maxFontSize: 140,
+        minFontSize: 40,
         fontFamily: SERIF_FONT,
         fontWeight: 700,
       }),
@@ -255,8 +257,8 @@ export const VintageLabel = forwardRef<SVGSVGElement, VintageLabelProps>(functio
       </defs>
 
       <g id="vintage-label-frame">
-        <path d={outerFramePath} fill="#ffffff" stroke={INK} strokeWidth={8} strokeLinejoin="round" />
-        <path d={innerFramePath} fill="none" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+        <path d={outerFramePath} fill="#ffffff" stroke={INK} strokeWidth={7} strokeLinejoin="round" />
+        <path d={innerFramePath} fill="none" stroke={INK} strokeWidth={2.6} strokeLinejoin="round" />
       </g>
 
       <g id="vintage-label-rules">

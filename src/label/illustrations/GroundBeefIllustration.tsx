@@ -2,44 +2,79 @@ import { HatchLines } from "./HatchLines";
 
 const INK = "#1a1a1a";
 
-/** A generous mound of ground meat on a plate, dense vintage engraving line style. */
+const PEBBLES: { x: number; y: number; r: number }[] = [
+  { x: 70, y: 150, r: 6 },
+  { x: 85, y: 138, r: 5.5 },
+  { x: 100, y: 128, r: 6 },
+  { x: 118, y: 118, r: 5.5 },
+  { x: 135, y: 122, r: 6 },
+  { x: 152, y: 130, r: 5.5 },
+  { x: 168, y: 140, r: 6 },
+  { x: 180, y: 152, r: 5.5 },
+  { x: 65, y: 168, r: 6 },
+  { x: 82, y: 158, r: 5 },
+  { x: 98, y: 148, r: 5.5 },
+  { x: 115, y: 140, r: 5 },
+  { x: 132, y: 144, r: 5.5 },
+  { x: 148, y: 150, r: 5 },
+  { x: 165, y: 160, r: 5.5 },
+  { x: 178, y: 170, r: 5 },
+  { x: 75, y: 182, r: 5.5 },
+  { x: 92, y: 172, r: 5 },
+  { x: 110, y: 164, r: 5.5 },
+  { x: 128, y: 160, r: 5 },
+  { x: 144, y: 166, r: 5.5 },
+  { x: 160, y: 176, r: 5 },
+  { x: 90, y: 188, r: 5 },
+  { x: 108, y: 182, r: 5.5 },
+  { x: 126, y: 178, r: 5 },
+  { x: 142, y: 184, r: 5.5 },
+];
+
+/** A generous mound of ground meat pebbled with clumps, piled in a butcher's tray, dense vintage engraving line style. */
 export function GroundBeefIllustration() {
   return (
     <g fill="none" stroke={INK} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
       <defs>
         <clipPath id="beef-clip-mound">
-          <path d="M50,186 C43,152 58,122 90,111 C97,89 122,79 142,94 C167,83 193,101 186,127 C202,142 196,167 175,180 C150,197 88,197 50,186 Z" />
+          <path d="M45,190 C38,158 55,132 88,122 C95,101 122,90 144,105 C171,93 199,113 190,138 C209,150 202,174 178,186 C148,199 82,199 45,190 Z" />
         </clipPath>
-        <clipPath id="beef-clip-plate">
-          <ellipse cx="120" cy="196" rx="88" ry="16" />
+        <clipPath id="beef-clip-right-wall">
+          <path d="M188,158 L206,172 L206,192 L188,178 Z" />
         </clipPath>
       </defs>
 
-      <HatchLines x={32} y={180} width={176} height={32} clipPathId="beef-clip-plate" spacing={7} angle={10} strokeWidth={1} opacity={0.5} />
-      <ellipse cx="120" cy="196" rx="88" ry="16" />
-      <ellipse cx="120" cy="194" rx="70" ry="11" strokeWidth={1.4} opacity={0.7} />
+      {/* tray */}
+      <g strokeWidth={2.4}>
+        <path d="M28,178 L188,158 L206,172 L206,192 L188,178 L44,198 L28,198 Z" fill="#ffffff" />
+        <path d="M28,178 L188,158 L206,172 L44,192 Z" />
+        <path d="M28,178 L44,192 L44,198 L28,198 Z" />
+      </g>
+      <HatchLines x={188} y={158} width={18} height={34} clipPathId="beef-clip-right-wall" spacing={4} angle={60} strokeWidth={1.3} />
+      <path d="M40,182 L40,196" strokeWidth={1.3} opacity={0.6} />
+      <path d="M56,190 L56,197" strokeWidth={1.3} opacity={0.6} />
+      <path d="M72,187 L72,194" strokeWidth={1.3} opacity={0.6} />
 
-      <HatchLines x={43} y={79} width={160} height={120} clipPathId="beef-clip-mound" spacing={7} angle={55} strokeWidth={1.5} />
-      <HatchLines x={43} y={79} width={160} height={120} clipPathId="beef-clip-mound" spacing={11} angle={140} strokeWidth={1} opacity={0.55} />
-
-      <path d="M50,186 C43,152 58,122 90,111 C97,89 122,79 142,94 C167,83 193,101 186,127 C202,142 196,167 175,180 C150,197 88,197 50,186 Z" />
-      <path
-        d="M58,178 C53,150 65,126 92,116 C98,97 119,88 137,100"
-        strokeWidth={1.4}
-        opacity={0.65}
-      />
-
-      <path d="M78,140 C74,132 78,124 87,122 C95,120 102,126 100,135 C98,143 88,148 80,145 Z" strokeWidth={2} />
-      <path d="M118,120 C114,111 120,103 130,103 C139,103 144,111 140,119 C136,127 124,129 118,120 Z" strokeWidth={2} />
-      <path d="M150,140 C148,131 155,124 165,125 C174,126 178,135 172,142 C166,149 154,148 150,140 Z" strokeWidth={2} />
-      <path d="M105,165 C103,157 109,151 118,152 C126,153 130,161 124,167 C118,173 108,172 105,165 Z" strokeWidth={2} />
-      <path d="M64,158 C62,151 67,146 74,147 C81,148 84,154 79,159 C74,164 66,164 64,158 Z" strokeWidth={1.8} />
-      <path d="M140,160 C138,153 143,148 150,149 C157,150 160,156 155,161 C150,166 142,166 140,160 Z" strokeWidth={1.8} />
-
-      <path d="M85,132 L92,140" strokeWidth={1.2} opacity={0.7} />
-      <path d="M125,112 L132,120" strokeWidth={1.2} opacity={0.7} />
-      <path d="M158,133 L165,141" strokeWidth={1.2} opacity={0.7} />
-      <path d="M112,160 L119,168" strokeWidth={1.2} opacity={0.7} />
+      {/* mound */}
+      <HatchLines x={38} y={90} width={162} height={109} clipPathId="beef-clip-mound" spacing={9} angle={55} strokeWidth={1.2} opacity={0.5} />
+      <g clipPath="url(#beef-clip-mound)">
+        {PEBBLES.map((pebble, index) => (
+          <circle key={index} cx={pebble.x} cy={pebble.y} r={pebble.r} fill="#ffffff" strokeWidth={1.4} />
+        ))}
+        {PEBBLES.map((pebble, index) => (
+          <circle
+            key={`shade-${index}`}
+            cx={pebble.x - pebble.r * 0.3}
+            cy={pebble.y - pebble.r * 0.3}
+            r={pebble.r * 0.32}
+            fill="none"
+            stroke={INK}
+            strokeWidth={0.9}
+            opacity={0.55}
+          />
+        ))}
+      </g>
+      <path d="M45,190 C38,158 55,132 88,122 C95,101 122,90 144,105 C171,93 199,113 190,138 C209,150 202,174 178,186 C148,199 82,199 45,190 Z" />
     </g>
   );
 }
