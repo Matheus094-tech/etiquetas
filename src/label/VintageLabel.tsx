@@ -18,18 +18,24 @@ const HEIGHT = 750;
 const INK = "#1a1a1a";
 const SERIF_FONT = 'Georgia, "Times New Roman", Times, serif';
 
-/** Outer frame with 45° cut corners — the "elegant notch" look of a classic product label. */
-const FRAME = { x: 20, y: 20, width: 1160, height: 710, notch: 46 };
-const FRAME_INSET_1 = 17;
-const FRAME_INSET_2 = 25;
+/** Outer frame: a rounded rectangle whose corners "pinch" inward near the tip — the classic vintage tag/plant-marker corner treatment. */
+const FRAME = { x: 20, y: 20, width: 1160, height: 710 };
+const FRAME_D_OUTER = 64;
+const FRAME_GAP = 16;
+const FRAME_D_INNER = FRAME_D_OUTER - FRAME_GAP;
 
-const MEDALLION = { cx: 196, cy: 375, outerR: 120, innerR: 98 };
-const ILLUSTRATION_SLOT = { x: 830, y: 78, width: 300, height: 604 };
+const MEDALLION = { cx: 196, cy: 375, scallopR: 112, ringR: 96 };
+const ILLUSTRATION_SLOT = { x: 820, y: 150, width: 310, height: 450 };
 const TEXT_ZONE = { x1: 350, x2: 800, centerX: 575 };
 
-const NAME_CENTER_Y = 322;
-const DIVIDER_Y = 440;
-const DESCRIPTION_Y = 492;
+const TOP_RULE_Y = 102;
+const BOTTOM_RULE_Y = 648;
+const RULE_X1 = 150;
+const RULE_X2 = 1050;
+
+const NAME_CENTER_Y = 300;
+const DIVIDER_Y = 420;
+const DESCRIPTION_Y = 468;
 
 const NAME_PLACEHOLDER = "NOME DO ALIMENTO";
 const WEIGHT_PLACEHOLDER = "PESO";
@@ -46,146 +52,117 @@ function formatWeightForDisplay(weightLabel: string): string {
   return `${digits.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}${rest}`;
 }
 
-/** Builds a rectangle path with its four corners chamfered at 45°. */
-function notchedRectPath(x: number, y: number, width: number, height: number, notch: number): string {
+type Vec = [number, number];
+
+/**
+ * One rounded-then-pinched corner: a wide convex curve that hugs the true
+ * corner tip, followed by a small concave "waist" before settling onto the
+ * next edge. `inAxis`/`outAxis` are unit vectors pointing back along the
+ * incoming edge and forward along the outgoing edge, so the same formula
+ * works for all four corners of a clockwise rectangle traversal.
+ */
+function cornerCurve(vertex: Vec, inAxis: Vec, outAxis: Vec, d: number): string {
+  const p = (alongIn: number, alongOut: number) =>
+    `${vertex[0] + inAxis[0] * alongIn + outAxis[0] * alongOut},${
+      vertex[1] + inAxis[1] * alongIn + outAxis[1] * alongOut
+    }`;
+  return (
+    `C ${p(d * 0.42, 0)} ${p(d * 0.03, d * 0.3)} ${p(d * 0.17, d * 0.62)} ` +
+    `C ${p(d * 0.31, d * 0.72)} ${p(d * 0.24, d * 0.9)} ${p(0, d)}`
+  );
+}
+
+/** Builds a closed rectangle path with the pinched-corner treatment on all four corners. */
+function pinchedFramePath(x: number, y: number, width: number, height: number, d: number): string {
   const x2 = x + width;
   const y2 = y + height;
   return [
-    `M ${x + notch} ${y}`,
-    `L ${x2 - notch} ${y}`,
-    `L ${x2} ${y + notch}`,
-    `L ${x2} ${y2 - notch}`,
-    `L ${x2 - notch} ${y2}`,
-    `L ${x + notch} ${y2}`,
-    `L ${x} ${y2 - notch}`,
-    `L ${x} ${y + notch}`,
+    `M ${x + d},${y}`,
+    `L ${x2 - d},${y}`,
+    cornerCurve([x2, y], [-1, 0], [0, 1], d),
+    `L ${x2},${y2 - d}`,
+    cornerCurve([x2, y2], [0, -1], [-1, 0], d),
+    `L ${x + d},${y2}`,
+    cornerCurve([x, y2], [1, 0], [0, -1], d),
+    `L ${x},${y + d}`,
+    cornerCurve([x, y], [0, 1], [1, 0], d),
     "Z",
   ].join(" ");
 }
 
-interface CornerOrnamentProps {
-  x: number;
-  y: number;
-  flipX?: 1 | -1;
-  flipY?: 1 | -1;
+/** A scalloped (flower/seal-edge) circle outline, built from quadratic bumps. */
+function scallopedCirclePath(cx: number, cy: number, r: number, bump: number, count: number): string {
+  const step = (Math.PI * 2) / count;
+  const parts: string[] = [];
+  for (let i = 0; i <= count; i += 1) {
+    const angle = i * step;
+    const x = cx + Math.cos(angle) * r;
+    const y = cy + Math.sin(angle) * r;
+    if (i === 0) {
+      parts.push(`M ${x},${y}`);
+      continue;
+    }
+    const midAngle = angle - step / 2;
+    const bumpR = (r + bump) * 1.18;
+    const cxp = cx + Math.cos(midAngle) * bumpR;
+    const cyp = cy + Math.sin(midAngle) * bumpR;
+    parts.push(`Q ${cxp},${cyp} ${x},${y}`);
+  }
+  return `${parts.join(" ")} Z`;
 }
 
-/** A richer scrollwork flourish tucked into each chamfered corner. */
-function CornerOrnament({ x, y, flipX = 1, flipY = 1 }: CornerOrnamentProps) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${flipX} ${flipY})`}>
-      <path
-        d="M4,26 L26,4"
-        stroke={INK}
-        strokeWidth={2}
-        strokeLinecap="round"
-        opacity={0.85}
-      />
-      <g stroke={INK} strokeWidth={2.2} fill="none" strokeLinecap="round">
-        <path d="M8,78 C8,40 40,8 78,8" />
-        <path d="M22,78 C22,50 50,22 78,22" />
-        <path d="M36,78 C36,60 60,36 78,36" />
-      </g>
-      <g stroke={INK} strokeWidth={1.3} opacity={0.75}>
-        <path d="M14,54 L24,44" />
-        <path d="M20,60 L30,50" />
-        <path d="M26,66 L36,56" />
-      </g>
-      <path
-        d="M30,30 L38,22 L46,30 L38,38 Z"
-        fill="#ffffff"
-        stroke={INK}
-        strokeWidth={2}
-      />
-    </g>
-  );
-}
-
-interface CenterOrnamentProps {
+interface FleuronProps {
   x: number;
   y: number;
+  scale?: number;
   flip?: 1 | -1;
 }
 
-/** A small fleuron bridging the top/bottom border, tendrils curling outward. */
-function CenterOrnament({ x, y, flip = 1 }: CenterOrnamentProps) {
+/** A small trefoil flourish — the typographic "fleuron" used throughout the label. */
+function Fleuron({ x, y, scale = 1, flip = 1 }: FleuronProps) {
   return (
-    <g transform={`translate(${x} ${y}) scale(1 ${flip})`}>
-      <path
-        d="M0,-8 C11,-2 11,18 0,27 C-11,18 -11,-2 0,-8 Z"
-        fill="#ffffff"
-        stroke={INK}
-        strokeWidth={2.2}
-      />
-      <line x1="0" y1="10" x2="0" y2="19" stroke={INK} strokeWidth={1.6} />
-      <g stroke={INK} strokeWidth={2.4} fill="none" strokeLinecap="round">
-        <path d="M-10,17 C-26,21 -34,31 -50,29" />
-        <path d="M10,17 C26,21 34,31 50,29" />
-      </g>
-      <circle cx="-54" cy="28" r="3" fill={INK} stroke="none" />
-      <circle cx="54" cy="28" r="3" fill={INK} stroke="none" />
+    <g transform={`translate(${x} ${y}) scale(${scale} ${scale * flip})`} fill={INK} stroke="none">
+      <path d="M0,-22 C6,-14 8,-4 4,4 C2,8 -2,8 -4,4 C-8,-4 -6,-14 0,-22 Z" />
+      <path d="M-4,2 C-10,0 -16,3 -18,9 C-14,10 -8,8 -4,4 Z" />
+      <path d="M4,2 C10,0 16,3 18,9 C14,10 8,8 4,4 Z" />
     </g>
   );
 }
 
-interface LaurelSprigProps {
+interface DecorativeRuleProps {
   x: number;
   y: number;
-  flipX?: 1 | -1;
+  width: number;
+  flip?: 1 | -1;
 }
 
-/** A small laurel sprig for the medallion, in the wax-seal tradition. */
-function LaurelSprig({ x, y, flipX = 1 }: LaurelSprigProps) {
-  const leaves = [8, 22, 36, 50];
+/** A rule flanked by end dots with a fleuron centered — the recurring header/divider motif. */
+function DecorativeRule({ x, y, width, flip = 1 }: DecorativeRuleProps) {
+  const half = width / 2;
   return (
-    <g transform={`translate(${x} ${y}) scale(${flipX} 1)`} stroke={INK} strokeWidth={1.6} fill="none" strokeLinecap="round">
-      <path d="M0,0 C14,-6 32,-8 54,-2" />
-      {leaves.map((offset, index) => (
-        <path
-          key={index}
-          d={`M${offset},${-2 - offset * 0.06} C${offset + 6},${-10 - offset * 0.06} ${offset + 6},${
-            -18 - offset * 0.06
-          } ${offset},${-22 - offset * 0.06}`}
-          transform={`rotate(${8 + index * 4} ${offset} ${-2 - offset * 0.06})`}
-        />
-      ))}
+    <g stroke={INK} strokeWidth={1.6} strokeLinecap="round">
+      <line x1={x - half} y1={y} x2={x - 24} y2={y} />
+      <line x1={x + 24} y1={y} x2={x + half} y2={y} />
+      <circle cx={x - half} cy={y} r={3.2} fill={INK} stroke="none" />
+      <circle cx={x + half} cy={y} r={3.2} fill={INK} stroke="none" />
+      <Fleuron x={x} y={y} scale={0.6} flip={flip} />
     </g>
   );
 }
 
 function Medallion() {
-  const { cx, cy, outerR, innerR } = MEDALLION;
-  const tickCount = 56;
-  const ticks = Array.from({ length: tickCount }, (_, index) => {
-    const angle = (index / tickCount) * Math.PI * 2;
-    const x1 = cx + Math.cos(angle) * (outerR - 12);
-    const y1 = cy + Math.sin(angle) * (outerR - 12);
-    const x2 = cx + Math.cos(angle) * outerR;
-    const y2 = cy + Math.sin(angle) * outerR;
-    return { x1, y1, x2, y2 };
-  });
+  const { cx, cy, scallopR, ringR } = MEDALLION;
+  const scallopPath = scallopedCirclePath(cx, cy, scallopR, 9, 20);
 
   return (
     <g>
-      {ticks.map((tick, index) => (
-        <line
-          key={index}
-          x1={tick.x1}
-          y1={tick.y1}
-          x2={tick.x2}
-          y2={tick.y2}
-          stroke={INK}
-          strokeWidth={1.6}
-          strokeLinecap="round"
-        />
-      ))}
-      <circle cx={cx} cy={cy} r={outerR - 16} fill="none" stroke={INK} strokeWidth={4} />
-      <circle cx={cx} cy={cy} r={innerR} fill="none" stroke={INK} strokeWidth={1.6} />
-      <circle cx={cx} cy={cy} r={innerR - 6} fill="none" stroke={INK} strokeWidth={1} opacity={0.7} />
+      <path d={scallopPath} fill="none" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
+      <circle cx={cx} cy={cy} r={ringR} fill="none" stroke={INK} strokeWidth={1.6} />
 
+      <DecorativeRule x={cx} y={cy - 32} width={116} flip={1} />
       <text
         x={cx}
-        y={cy - 8}
+        y={cy + 12}
         textAnchor="middle"
         dominantBaseline="middle"
         fontFamily={SERIF_FONT}
@@ -196,15 +173,7 @@ function Medallion() {
       >
         M&amp;S
       </text>
-      <path
-        d={`M${cx - 30},${cy + 14} C${cx - 14},${cy + 19} ${cx + 14},${cy + 19} ${cx + 30},${cy + 14}`}
-        fill="none"
-        stroke={INK}
-        strokeWidth={1.6}
-      />
-
-      <LaurelSprig x={cx - 8} y={cy + innerR - 10} flipX={-1} />
-      <LaurelSprig x={cx + 8} y={cy + innerR - 10} flipX={1} />
+      <DecorativeRule x={cx} y={cy + 46} width={116} flip={-1} />
     </g>
   );
 }
@@ -250,20 +219,13 @@ export const VintageLabel = forwardRef<SVGSVGElement, VintageLabelProps>(functio
       ? [NAME_CENTER_Y]
       : [NAME_CENTER_Y - lineHeight / 2, NAME_CENTER_Y + lineHeight / 2];
 
-  const outerFramePath = notchedRectPath(FRAME.x, FRAME.y, FRAME.width, FRAME.height, FRAME.notch);
-  const innerLine1Path = notchedRectPath(
-    FRAME.x + FRAME_INSET_1,
-    FRAME.y + FRAME_INSET_1,
-    FRAME.width - FRAME_INSET_1 * 2,
-    FRAME.height - FRAME_INSET_1 * 2,
-    FRAME.notch - FRAME_INSET_1
-  );
-  const innerLine2Path = notchedRectPath(
-    FRAME.x + FRAME_INSET_2,
-    FRAME.y + FRAME_INSET_2,
-    FRAME.width - FRAME_INSET_2 * 2,
-    FRAME.height - FRAME_INSET_2 * 2,
-    FRAME.notch - FRAME_INSET_2
+  const outerFramePath = pinchedFramePath(FRAME.x, FRAME.y, FRAME.width, FRAME.height, FRAME_D_OUTER);
+  const innerFramePath = pinchedFramePath(
+    FRAME.x + FRAME_GAP,
+    FRAME.y + FRAME_GAP,
+    FRAME.width - FRAME_GAP * 2,
+    FRAME.height - FRAME_GAP * 2,
+    FRAME_D_INNER
   );
 
   return (
@@ -293,33 +255,13 @@ export const VintageLabel = forwardRef<SVGSVGElement, VintageLabelProps>(functio
       </defs>
 
       <g id="vintage-label-frame">
-        <path d={outerFramePath} fill="#ffffff" stroke={INK} strokeWidth={13} strokeLinejoin="round" />
-        <path d={innerLine1Path} fill="none" stroke={INK} strokeWidth={4} strokeLinejoin="round" />
-        <path d={innerLine2Path} fill="none" stroke={INK} strokeWidth={1.8} strokeLinejoin="round" />
+        <path d={outerFramePath} fill="#ffffff" stroke={INK} strokeWidth={8} strokeLinejoin="round" />
+        <path d={innerFramePath} fill="none" stroke={INK} strokeWidth={3} strokeLinejoin="round" />
       </g>
 
-      <g id="vintage-label-ornaments">
-        <CornerOrnament x={FRAME.x + FRAME_INSET_2} y={FRAME.y + FRAME_INSET_2} flipX={1} flipY={1} />
-        <CornerOrnament
-          x={FRAME.x + FRAME.width - FRAME_INSET_2}
-          y={FRAME.y + FRAME_INSET_2}
-          flipX={-1}
-          flipY={1}
-        />
-        <CornerOrnament
-          x={FRAME.x + FRAME_INSET_2}
-          y={FRAME.y + FRAME.height - FRAME_INSET_2}
-          flipX={1}
-          flipY={-1}
-        />
-        <CornerOrnament
-          x={FRAME.x + FRAME.width - FRAME_INSET_2}
-          y={FRAME.y + FRAME.height - FRAME_INSET_2}
-          flipX={-1}
-          flipY={-1}
-        />
-        <CenterOrnament x={WIDTH / 2} y={FRAME.y} flip={1} />
-        <CenterOrnament x={WIDTH / 2} y={FRAME.y + FRAME.height} flip={-1} />
+      <g id="vintage-label-rules">
+        <DecorativeRule x={WIDTH / 2} y={TOP_RULE_Y} width={RULE_X2 - RULE_X1} />
+        <DecorativeRule x={WIDTH / 2} y={BOTTOM_RULE_Y} width={RULE_X2 - RULE_X1} flip={-1} />
       </g>
 
       <g id="vintage-label-medallion">
@@ -342,32 +284,8 @@ export const VintageLabel = forwardRef<SVGSVGElement, VintageLabelProps>(functio
         ))}
       </g>
 
-      <g id="vintage-label-divider" stroke={INK} strokeLinecap="round">
-        <line
-          x1={TEXT_ZONE.centerX - 140}
-          y1={DIVIDER_Y}
-          x2={TEXT_ZONE.centerX - 20}
-          y2={DIVIDER_Y}
-          strokeWidth={1.4}
-          opacity={0.8}
-        />
-        <line
-          x1={TEXT_ZONE.centerX + 20}
-          y1={DIVIDER_Y}
-          x2={TEXT_ZONE.centerX + 140}
-          y2={DIVIDER_Y}
-          strokeWidth={1.4}
-          opacity={0.8}
-        />
-        <path
-          d={`M${TEXT_ZONE.centerX},${DIVIDER_Y - 7} L${TEXT_ZONE.centerX + 7},${DIVIDER_Y} L${TEXT_ZONE.centerX},${
-            DIVIDER_Y + 7
-          } L${TEXT_ZONE.centerX - 7},${DIVIDER_Y} Z`}
-          fill="#ffffff"
-          strokeWidth={1.6}
-        />
-        <circle cx={TEXT_ZONE.centerX - 20} cy={DIVIDER_Y} r="2.4" fill={INK} stroke="none" />
-        <circle cx={TEXT_ZONE.centerX + 20} cy={DIVIDER_Y} r="2.4" fill={INK} stroke="none" />
+      <g id="vintage-label-divider" opacity={isPlaceholderDescription ? 0.4 : 1}>
+        <DecorativeRule x={TEXT_ZONE.centerX} y={DIVIDER_Y} width={260} />
       </g>
 
       <g id="vintage-label-description" fontFamily={SERIF_FONT} textAnchor="middle">
