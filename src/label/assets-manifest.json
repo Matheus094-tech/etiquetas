@@ -1,0 +1,112 @@
+{
+  "packageVersion": "1.0.0",
+  "physicalSizeMm": {
+    "width": 40,
+    "height": 12
+  },
+  "aspectRatio": "10:3",
+  "viewBox": {
+    "width": 2000,
+    "height": 600
+  },
+  "pngExport": {
+    "300dpi": {
+      "width": 472,
+      "height": 142
+    },
+    "600dpi": {
+      "width": 945,
+      "height": 283
+    }
+  },
+  "template": "assets/template/etiqueta-base-40x12mm.png",
+  "frameOverlay": "assets/template/moldura-overlay-40x12mm.png",
+  "logo": "assets/brand/logo-ms.png",
+  "defaultIllustration": "assets/illustrations/default-ornamento.png",
+  "illustrations": [
+    {
+      "id": "carne-com-batata",
+      "file": "assets/illustrations/carne-com-batata.png",
+      "priority": 100,
+      "match": {
+        "all": [
+          "batata"
+        ],
+        "any": [
+          "carne",
+          "patinho",
+          "bovina",
+          "boi"
+        ]
+      }
+    },
+    {
+      "id": "batata-patinho",
+      "file": "assets/illustrations/batata-patinho.png",
+      "priority": 95,
+      "match": {
+        "phrases": [
+          "batata/patinho",
+          "batata patinho"
+        ]
+      }
+    },
+    {
+      "id": "carne-moida",
+      "file": "assets/illustrations/carne-moida.png",
+      "priority": 80,
+      "match": {
+        "any": [
+          "carne",
+          "patinho",
+          "moido",
+          "moída",
+          "moida",
+          "bovina",
+          "boi"
+        ]
+      }
+    },
+    {
+      "id": "legumes",
+      "file": "assets/illustrations/legumes.png",
+      "priority": 70,
+      "match": {
+        "any": [
+          "legume",
+          "legumes",
+          "verdura",
+          "verduras",
+          "vegetal",
+          "vegetais"
+        ]
+      }
+    },
+    {
+      "id": "fruta-coloral",
+      "file": "assets/illustrations/fruta-coloral.png",
+      "priority": 60,
+      "match": {
+        "any": [
+          "fruta",
+          "frutas",
+          "coloral",
+          "urucum",
+          "banana",
+          "maca",
+          "maçã",
+          "morango",
+          "uva",
+          "mamao",
+          "mamão"
+        ]
+      }
+    },
+    {
+      "id": "default",
+      "file": "assets/illustrations/default-ornamento.png",
+      "priority": 0,
+      "match": {}
+    }
+  ]
+}

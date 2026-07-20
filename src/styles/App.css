@@ -276,9 +276,18 @@
   justify-content: center;
 }
 
+/* The label is physically 40mm x 12mm (10:3) — fixed here so it always
+   scales down proportionally and the frame is never cropped or stretched
+   into a taller/squarer shape on small screens. */
+.label-preview__frame {
+  width: 100%;
+  aspect-ratio: 10 / 3;
+}
+
 .label-preview__svg {
   width: 100%;
-  height: auto;
+  height: 100%;
+  display: block;
 }
 
 .label-preview__hint {

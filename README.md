@@ -1,22 +1,23 @@
 # Gerador de Etiquetas M&S
 
 Ferramenta de uso pessoal, desenvolvida pela **MB Software**, para gerar etiquetas de
-cozinha vintage (preto e branco) a partir de um template visual fixo — sem depender de
+cozinha vintage (preto e branco) a partir do template oficial M&S — sem depender de
 geração de imagens por IA a cada etiqueta.
 
 ## Objetivo
 
-Substituir a geração recorrente de etiquetas via IA generativa por um template
-determinístico em SVG: você digita o nome do alimento, uma descrição opcional, o peso e
-escolhe (ou deixa automática) a ilustração, e a etiqueta é montada instantaneamente no
-navegador, sempre com a mesma moldura, tipografia e composição.
+Substituir a geração recorrente de etiquetas via IA generativa por uma composição
+determinística no navegador: você digita o nome do alimento, uma descrição opcional e o
+peso, escolhe (ou deixa automática) a ilustração, e a etiqueta é montada
+instantaneamente usando os assets oficiais aprovados (moldura, logo M&S e ilustrações),
+no tamanho físico exato de **40mm × 12mm** (proporção 10:3).
 
 ## Stack
 
 - **React 19** + **TypeScript**
 - **Vite** (build e dev server)
 - **CSS próprio** (sem framework de UI)
-- **Vitest** + Testing Library para testes unitários
+- **Vitest** para testes unitários
 - Aplicação **100% client-side**: sem backend, sem banco de dados, sem Supabase, sem
   chamadas a APIs externas e sem IA generativa
 - Persistência local via **localStorage** (apenas os dados do histórico, nunca as
@@ -38,8 +39,9 @@ npm run dev
 ```
 
 Acesse o endereço exibido no terminal (por padrão `http://localhost:5173`). A aplicação
-funciona inteiramente no navegador, sem qualquer chamada de rede após o carregamento
-inicial dos arquivos estáticos.
+funciona inteiramente no navegador; os únicos "pedidos de rede" são para os próprios
+assets estáticos do projeto (`/assets/...`), servidos pelo mesmo servidor/hospedagem —
+nunca para um serviço externo.
 
 ## Como gerar o build de produção
 
@@ -61,7 +63,8 @@ npm run preview
    - **Publish directory:** `dist`
 3. O arquivo `netlify.toml` na raiz do projeto já define esses valores e um redirect
    `/* -> /index.html` (necessário porque é uma SPA), então basta conectar o
-   repositório e publicar — nenhuma variável de ambiente é necessária.
+   repositório e publicar — nenhuma variável de ambiente é necessária. Os assets em
+   `public/assets/` são copiados para `dist/assets/` automaticamente pelo Vite.
 
 ## Testes e validações
 
@@ -71,80 +74,100 @@ npm run test    # Vitest (testes unitários)
 npm run build   # tsc --build + build de produção do Vite
 ```
 
-Os testes cobrem: normalização do peso, criação do nome do arquivo, seleção automática
-da ilustração, serialização/parsing do histórico (incluindo dados malformados),
-tratamento de campos vazios, remoção de acentos e substituição de `/` no nome do
-arquivo.
+Os testes cobrem: normalização do peso (incluindo o separador de milhar `1.560g`),
+criação do nome do arquivo (com sufixo de resolução), seleção automática da ilustração
+(ordem de regras específica → genérica, conforme `docs/illustration-map.example.ts` do
+pacote oficial), serialização/parsing do histórico, embutimento de imagens locais como
+data URL para exportação, tratamento de campos vazios, remoção de acentos e substituição
+de `/` no nome do arquivo.
 
-## Como adicionar uma nova ilustração
+## Assets oficiais
 
-As ilustrações são componentes SVG simples, sem dependências externas, em
-`src/label/illustrations/`. Para adicionar uma nova:
+A etiqueta é composta a partir dos arquivos oficiais aprovados, em `public/assets/`
+(servidos como estão — nenhum é redesenhado):
 
-1. Crie `src/label/illustrations/MinhaIlustracao.tsx` exportando um componente que
-   renderiza um `<g>` desenhado dentro de um viewBox nativo de `240x240` (mesma
-   convenção das ilustrações existentes), em preto e branco, sem fill sólido — use
-   `stroke` e, se quiser sombreamento, o utilitário `<HatchLines />`
-   (`src/label/illustrations/HatchLines.tsx`) para o efeito de gravura antiga.
-2. Registre o componente em `ILLUSTRATION_COMPONENTS`, dentro de
-   `src/label/LabelIllustration.tsx`.
-3. Adicione a nova opção em `ILLUSTRATION_OPTIONS` (`src/label/label.types.ts`), que
-   alimenta o `<select>` do formulário.
+```
+public/assets/
+├── brand/logo-ms.png                         # medalhão M&S
+├── template/
+│   ├── etiqueta-base-40x12mm.png             # moldura + fundo branco (camada de baixo)
+│   └── moldura-overlay-40x12mm.png           # moldura por cima (camada de cima, transparente no centro)
+└── illustrations/
+    ├── legumes.png
+    ├── carne-moida.png
+    ├── carne-com-batata.png
+    ├── batata-patinho.png
+    ├── fruta-coloral.png
+    └── default-ornamento.png                 # fallback quando nada corresponde
+```
+
+`src/label/assets-manifest.json` (cópia do manifesto do pacote oficial) e
+`src/label/assets.ts` documentam a origem e as URLs desses arquivos.
+
+### Como adicionar uma nova ilustração
+
+Sem redesenhar nada em código — apenas registrando um novo arquivo oficial:
+
+1. Coloque o PNG aprovado (fundo transparente) em `public/assets/illustrations/`.
+2. Adicione o `id` e a URL em `ILLUSTRATION_ASSET_URLS`
+   (`src/label/assets.ts`).
+3. Adicione a opção correspondente em `IllustrationKey` e `ILLUSTRATION_OPTIONS`
+   (`src/label/label.types.ts`), para aparecer no seletor manual do formulário.
 4. Se fizer sentido, ensine a detecção automática a reconhecê-la por palavra-chave em
-   `src/utils/selectIllustration.ts` (função `detectIllustrationFromName`).
+   `src/utils/selectIllustration.ts` (função `detectIllustrationFromName`) — mantendo
+   as regras mais específicas antes das mais genéricas.
 
-Nenhuma imagem externa (arquivo `.png`/`.jpg` ou URL remota) deve ser usada — tudo é
-vetor, desenhado em código, para manter a etiqueta nítida em qualquer resolução de
-exportação.
+## Como funciona a composição e a exportação
 
-## Como funciona a exportação para PNG
+`src/label/VintageLabel.tsx` monta um único `<svg>` (`viewBox="0 0 2000 600"`,
+`width="40mm"`, `height="12mm"`) empilhando, nesta ordem, `<image>` do template base →
+`<image>` do logo → texto do nome → texto de descrição/peso → `<image>` da ilustração
+resolvida → `<image>` do overlay da moldura por cima de tudo. A mesma árvore SVG
+alimenta a pré-visualização e as duas exportações (não há um "modo de exportação"
+separado a manter sincronizado).
 
-A pré-visualização e a exportação usam **a mesma árvore SVG** (não há um "modo de
-exportação" separado a ser mantido sincronizado):
+Como as imagens são referenciadas por URL local (`/assets/...`), antes de qualquer
+download `src/utils/embedSvgImages.ts` busca cada arquivo, converte para uma **data URL
+base64** e substitui o `href` num clone do SVG — por isso o arquivo baixado (SVG ou PNG)
+abre corretamente sozinho, mesmo sem internet e fora do site.
 
-1. O SVG ao vivo é clonado e serializado como XML autocontido
-   (`src/utils/exportSvg.ts`).
-2. Esse XML vira uma `Blob`/`Object URL` e é carregado como uma `Image` do navegador.
-3. Essa imagem é desenhada (`drawImage`) em um `<canvas>` dimensionado para a
-   resolução de exportação (largura mínima de **2400px**, mantendo a proporção
-   1200×750 do template) — como o desenho é vetorial, o navegador rasteriza nessa
-   resolução alvo, então o resultado fica nítido em vez de "esticado".
-4. O canvas é convertido para PNG (`canvas.toBlob`) e o download é disparado.
+- **SVG**: o clone com as imagens já embutidas é serializado como XML autocontido
+  (`src/utils/exportSvg.ts`) e baixado com `width="40mm"`/`height="12mm"`.
+- **PNG**: o mesmo clone embutido é desenhado (`drawImage`) num `<canvas>` nos dois
+  tamanhos de impressão exigidos (`src/utils/exportPng.ts`): **300 DPI → 472×142px** e
+  **600 DPI → 945×283px** (calculados a partir do tamanho físico de 40mm×12mm; uma
+  diferença de 1px por arredondamento é esperada). O canvas nunca recebe um retângulo
+  de fundo, então a transparência fora da moldura é real e o branco só existe dentro do
+  contorno da etiqueta.
 
-Como o `<canvas>` nunca recebe um retângulo de fundo, a transparência fora da moldura é
-real (canal alfa 0) e o branco só existe dentro do contorno da etiqueta — o padrão
-quadriculado que aparece na pré-visualização é puramente CSS de página e nunca entra no
+O padrão quadriculado da pré-visualização é puramente CSS de página — nunca entra no
 SVG nem no PNG exportado.
-
-O download do SVG original segue o mesmo passo 1, sem rasterização.
 
 ## O sistema não usa IA generativa
 
-Não há geração de imagem por modelo de IA em nenhuma etapa. A etiqueta é sempre a
-mesma composição (moldura, ornamentos, medalhão M&S) desenhada em SVG com dados
-determinísticos (nome, descrição, peso, ilustração escolhida). O único "algoritmo"
-envolvido é o ajuste automático do tamanho do texto do nome (`src/utils/fitText.ts`),
-que mede a largura do texto (via `canvas.measureText`, com fallback heurístico) para
-escolher o maior tamanho de fonte que caiba no espaço disponível, quebrando em até duas
-linhas quando necessário.
+Não há geração de imagem por modelo de IA em nenhuma etapa, nem redesenho dos assets: a
+etiqueta é sempre a mesma composição de arquivos oficiais aprovados (moldura, medalhão
+M&S, ilustrações) com dados determinísticos do formulário (nome, descrição, peso,
+ilustração escolhida). O único "algoritmo" envolvido é o ajuste automático do tamanho do
+texto do nome (`src/utils/fitText.ts`), que mede a largura real do texto (via
+`canvas.measureText`, com fallback heurístico) para escolher o maior tamanho de fonte
+que caiba no espaço disponível, quebrando em até duas linhas quando necessário.
 
 ## Limitações conhecidas
 
-- As seis ilustrações iniciais (legumes, carne moída, batata com carne, frango, arroz,
-  feijão) são desenhos vetoriais próprios, estilizados como gravura vintage — não são
-  ilustrações realistas nem fotografias.
+- O conjunto de ilustrações é o do pacote oficial aprovado (legumes, carne moída, carne
+  com batata, batata/patinho, fruta/coloral) mais o ornamento padrão de fallback; comidas
+  fora desse vocabulário (ex.: frango, arroz, feijão) caem no ornamento padrão até que um
+  novo asset oficial seja fornecido — a detecção automática não inventa ilustrações.
 - A tipografia usa a pilha de fontes serifadas do sistema (`Georgia`, `Times New
   Roman`, `serif`), para garantir que a aplicação funcione totalmente offline após a
   instalação, sem depender de uma fonte web carregada pela rede.
-- A detecção automática de ilustração é baseada em palavras-chave simples (com remoção
-  de acentos); nomes de alimentos fora do vocabulário mapeado caem em "sem
-  ilustração" e podem ser ajustados manualmente no campo Ilustração.
+- A exportação SVG/PNG faz uma busca (`fetch`) local aos arquivos em `/assets/...` para
+  embuti-los como data URL; isso exige que o site esteja carregado normalmente (local ou
+  hospedado) — não há chamada a nenhum serviço externo.
 - Não há exportação em folha A4 com múltiplas etiquetas nesta versão — a arquitetura
-  (template SVG único e determinístico, desacoplado da exportação) foi pensada para
+  (uma única árvore SVG determinística, desacoplada da exportação) foi pensada para
   permitir isso no futuro, mas a funcionalidade em si está fora do escopo atual.
-- Em navegadores muito antigos sem suporte a `canvas.toBlob` ou a `SVGSVGElement`
-  totalmente compatível, a exportação em PNG pode não funcionar; o download do SVG
-  depende apenas de `Blob`/`XMLSerializer`, amplamente suportados.
 - O histórico guarda no máximo as 10 últimas etiquetas (apenas os dados, nunca a
   imagem) em `localStorage`; limpar os dados do site no navegador apaga esse
   histórico.
@@ -152,13 +175,14 @@ linhas quando necessário.
 ## Estrutura do projeto
 
 ```
+public/assets/          # template, logo e ilustrações oficiais (ver "Assets oficiais")
 src/
-├── components/        # LabelEditor, LabelForm, LabelPreview, LabelHistory, PresetList, ExportActions
-├── label/              # VintageLabel (template SVG), ilustrações, tipos e presets
-│   └── illustrations/
-├── hooks/              # useLabelHistory
-├── utils/              # normalizeWeight, createFilename, selectIllustration, fitText, exportSvg, exportPng, historyStorage
-├── styles/             # CSS próprio (reset + layout/componentes)
+├── components/         # LabelEditor, LabelForm, LabelPreview, LabelHistory, PresetList, ExportActions
+├── label/               # VintageLabel (composição SVG), assets.ts, tipos e presets
+├── hooks/               # useLabelHistory
+├── utils/               # normalizeWeight, createFilename, selectIllustration, fitText,
+│                        # exportSvg, exportPng, embedSvgImages, historyStorage
+├── styles/              # CSS próprio (reset + layout/componentes)
 └── App.tsx
 ```
 

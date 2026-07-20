@@ -1,11 +1,11 @@
+/** Manual illustration choices exposed in the form — "auto" resolves at render time from the name/description. */
 export type IllustrationKey =
   | "auto"
-  | "vegetables"
-  | "ground-beef"
-  | "potato-beef"
-  | "chicken"
-  | "rice"
-  | "beans"
+  | "legumes"
+  | "carne-moida"
+  | "carne-com-batata"
+  | "batata-patinho"
+  | "fruta-coloral"
   | "none";
 
 export interface LabelData {
@@ -22,12 +22,11 @@ export interface HistoryEntry extends LabelData {
 
 export const ILLUSTRATION_OPTIONS: { value: IllustrationKey; label: string }[] = [
   { value: "auto", label: "Automática" },
-  { value: "vegetables", label: "Legumes" },
-  { value: "ground-beef", label: "Carne moída" },
-  { value: "potato-beef", label: "Batata com carne" },
-  { value: "chicken", label: "Frango" },
-  { value: "rice", label: "Arroz" },
-  { value: "beans", label: "Feijão" },
+  { value: "legumes", label: "Legumes" },
+  { value: "carne-moida", label: "Carne moída" },
+  { value: "carne-com-batata", label: "Carne com batata" },
+  { value: "batata-patinho", label: "Batata/Patinho" },
+  { value: "fruta-coloral", label: "Fruta / Coloral" },
   { value: "none", label: "Sem ilustração" },
 ];
 

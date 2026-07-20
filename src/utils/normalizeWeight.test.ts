@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWeightLabel, normalizeWeight } from "./normalizeWeight";
+import { formatWeightForDisplay, formatWeightLabel, normalizeWeight } from "./normalizeWeight";
 
 describe("normalizeWeight", () => {
   it("keeps a plain numeric string untouched", () => {
@@ -45,5 +45,21 @@ describe("formatWeightLabel", () => {
 
   it("returns an empty string for empty input", () => {
     expect(formatWeightLabel("")).toBe("");
+  });
+});
+
+describe("formatWeightForDisplay", () => {
+  it("leaves small weights untouched", () => {
+    expect(formatWeightForDisplay("690g")).toBe("690g");
+    expect(formatWeightForDisplay("475g")).toBe("475g");
+  });
+
+  it("adds a Brazilian thousands separator for weights at or above 1000", () => {
+    expect(formatWeightForDisplay("1560g")).toBe("1.560g");
+    expect(formatWeightForDisplay("1000g")).toBe("1.000g");
+  });
+
+  it("returns the input untouched when it has no leading digits", () => {
+    expect(formatWeightForDisplay("")).toBe("");
   });
 });

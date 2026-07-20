@@ -37,4 +37,9 @@ describe("createFilename", () => {
     const data: LabelData = { name: "", description: "", weight: "", illustration: "auto" };
     expect(createFilename(data, "png")).toBe("etiqueta.png");
   });
+
+  it("inserts an optional suffix before the extension", () => {
+    expect(createFilename(baseData, "png", "300dpi")).toBe("etiqueta-patinho-moido-690g-300dpi.png");
+    expect(createFilename(baseData, "png", "600dpi")).toBe("etiqueta-patinho-moido-690g-600dpi.png");
+  });
 });

@@ -16,14 +16,16 @@ export function LabelPreview({ data, svgRef }: LabelPreviewProps) {
   return (
     <div className="label-preview">
       <div className="label-preview__checkerboard">
-        <VintageLabel
-          ref={svgRef}
-          name={data.name}
-          description={data.description}
-          weight={data.weight}
-          illustration={data.illustration}
-          className="label-preview__svg"
-        />
+        <div className="label-preview__frame">
+          <VintageLabel
+            ref={svgRef}
+            name={data.name}
+            description={data.description}
+            weight={data.weight}
+            illustration={data.illustration}
+            className="label-preview__svg"
+          />
+        </div>
       </div>
       <p className="label-preview__hint">
         O padrão quadriculado indica apenas, nesta pré-visualização, onde a etiqueta será

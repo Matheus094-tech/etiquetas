@@ -1,4 +1,5 @@
 import { triggerDownload } from "./download";
+import { embedSvgImages } from "./embedSvgImages";
 
 /** Serializes a live SVG element into a standalone, self-contained XML string. */
 export function serializeSvgElement(svg: SVGSVGElement): string {
@@ -12,8 +13,15 @@ export function serializeSvgElement(svg: SVGSVGElement): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n${serialized}`;
 }
 
-export function downloadSvg(svg: SVGSVGElement, filename: string): void {
-  const svgString = serializeSvgElement(svg);
+/**
+ * Downloads the label as a standalone SVG file. The template, logo and
+ * illustration are referenced as local `<image>` files in the live preview,
+ * so they're embedded as data URLs first — the downloaded file opens
+ * correctly on its own, with no connection to the site required.
+ */
+export async function downloadSvg(svg: SVGSVGElement, filename: string): Promise<void> {
+  const embedded = await embedSvgImages(svg);
+  const svgString = serializeSvgElement(embedded);
   const blob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   triggerDownload(url, filename);

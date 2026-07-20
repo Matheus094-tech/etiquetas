@@ -5,12 +5,11 @@ export const MAX_HISTORY_ENTRIES = 10;
 
 const ILLUSTRATION_KEYS: IllustrationKey[] = [
   "auto",
-  "vegetables",
-  "ground-beef",
-  "potato-beef",
-  "chicken",
-  "rice",
-  "beans",
+  "legumes",
+  "carne-moida",
+  "carne-com-batata",
+  "batata-patinho",
+  "fruta-coloral",
   "none",
 ];
 

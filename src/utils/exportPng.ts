@@ -1,25 +1,26 @@
 import { triggerDownload } from "./download";
+import { embedSvgImages } from "./embedSvgImages";
 import { serializeSvgElement } from "./exportSvg";
 
-export const MIN_EXPORT_WIDTH_PX = 2400;
+const MM_PER_INCH = 25.4;
+const LABEL_WIDTH_MM = 40;
+const LABEL_HEIGHT_MM = 12;
 
-export interface ExportPngOptions {
-  /** Explicit scale factor applied to the SVG's own viewBox units. */
-  scale?: number;
-  /** Minimum output width in pixels; used to derive a scale when `scale` is omitted. */
-  minWidthPx?: number;
+function mmToPx(mm: number, dpi: number): number {
+  return Math.round((mm / MM_PER_INCH) * dpi);
 }
 
-function getViewBoxSize(svg: SVGSVGElement): { width: number; height: number } {
-  const viewBox = svg.viewBox.baseVal;
-  if (viewBox && viewBox.width > 0 && viewBox.height > 0) {
-    return { width: viewBox.width, height: viewBox.height };
-  }
-  return {
-    width: svg.width.baseVal.value || svg.clientWidth,
-    height: svg.height.baseVal.value || svg.clientHeight,
-  };
+export interface PngExportPreset {
+  dpi: number;
+  width: number;
+  height: number;
 }
+
+/** The two print resolutions required for the 40mm x 12mm label — a one-pixel rounding difference from the exact 10:3 ratio is expected and acceptable. */
+export const PNG_EXPORT_PRESETS: readonly PngExportPreset[] = [
+  { dpi: 300, width: mmToPx(LABEL_WIDTH_MM, 300), height: mmToPx(LABEL_HEIGHT_MM, 300) },
+  { dpi: 600, width: mmToPx(LABEL_WIDTH_MM, 600), height: mmToPx(LABEL_HEIGHT_MM, 600) },
+];
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -40,24 +41,18 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 }
 
 /**
- * Rasterizes the given SVG label into a transparent, high-resolution PNG and
- * triggers a browser download. Runs entirely client-side: the SVG is loaded
- * as an image and drawn onto a canvas sized for the requested resolution, so
- * the vector artwork stays sharp instead of being naively upscaled.
+ * Rasterizes the label into a transparent PNG at the requested print
+ * resolution and triggers a browser download. The template, logo and
+ * illustration `<image>` references are embedded as data URLs first so the
+ * rasterization never depends on a live fetch to the site.
  */
 export async function exportLabelToPng(
   svg: SVGSVGElement,
   filename: string,
-  options: ExportPngOptions = {}
+  preset: PngExportPreset
 ): Promise<void> {
-  const { width, height } = getViewBoxSize(svg);
-  if (width <= 0 || height <= 0) {
-    throw new Error("Não foi possível determinar as dimensões da etiqueta.");
-  }
-
-  const scale = options.scale ?? Math.max(1, (options.minWidthPx ?? MIN_EXPORT_WIDTH_PX) / width);
-
-  const svgString = serializeSvgElement(svg);
+  const embedded = await embedSvgImages(svg);
+  const svgString = serializeSvgElement(embedded);
   const svgBlob = new Blob([svgString], { type: "image/svg+xml;charset=utf-8" });
   const svgUrl = URL.createObjectURL(svgBlob);
 
@@ -65,8 +60,8 @@ export async function exportLabelToPng(
     const image = await loadImage(svgUrl);
 
     const canvas = document.createElement("canvas");
-    canvas.width = Math.round(width * scale);
-    canvas.height = Math.round(height * scale);
+    canvas.width = preset.width;
+    canvas.height = preset.height;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) {
