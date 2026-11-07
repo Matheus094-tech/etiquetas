@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useAuth, useHouse } from "../app/CasaProviders";
+import { displayUsername } from "../lib/householdUsers";
 
 export function HouseOnboarding() {
   const { error: loadError, create, join } = useHouse();
@@ -29,7 +30,7 @@ export function HouseOnboarding() {
       <div className="casa-panel">
         <span className="casa-eyebrow">Bem-vindo à Casa Nexo</span>
         <h1>Vamos organizar nossa Casa?</h1>
-        <p>Você está conectado como {session?.user.email}. Crie uma Casa ou entre usando o convite do outro morador.</p>
+        <p>Você está conectado como {displayUsername(session?.user.email)}. Crie uma Casa ou entre usando o convite do outro morador.</p>
         {(error || loadError) && <p role="alert" className="casa-alert casa-alert--error">{error || loadError}</p>}
         <div className="casa-onboarding__columns">
           <form className="casa-form" onSubmit={createHouse}>
