@@ -3,7 +3,7 @@
 ## Escopo deste PR
 
 Com um projeto Supabase conectado, disponibiliza:
-- cadastro e login por e-mail e senha (a confirmação de e-mail depende da configuração no Supabase Auth);
+- acesso reservado por nomes de usuário `matheus` e `stephany` com senha pelo Supabase Auth (contas criadas no painel administrativo, sem cadastro público no aplicativo);
 - criação de Casa e convite de uso único, válido por 48 horas;
 - uso em dois celulares/contas independentes, com dados de uma Casa;
 - armários, cômodos, gavetas, prateleiras, geladeira, freezer e locais aninhados;
@@ -25,6 +25,17 @@ Com um projeto Supabase conectado, disponibiliza:
 - Pendente: testar login e confirmação de e-mail, dois moradores reais, convites, leitura/escrita, armazenamento de fotos, policies de acesso entre Casas e fluxos de erro. Não afirmar que estão testados.
 - Auditoria Supabase acusou funções `SECURITY DEFINER` acessíveis a authenticated (convite e movimentação) e ausência intencional de policies diretas em `house_invites`; revisar permissões/risco antes de produção, além de índices para desempenho.
 
+## Acesso sem e-mail — Matheus e Stephany (solicitado em 07/11/2026)
+
+- A interface do preview aceita apenas **usuário e senha**; os logins são `matheus` e `stephany`. Não há campo e-mail nem opção de cadastro público.
+- O Supabase Auth continua gerenciando o hash das senhas, sessões e JWT. Para login de senha, o Supabase precisa internamente de um e-mail ou telefone. Por isso mapeamos cada usuário para um endereço técnico reservado do tipo `usuario@users.casa-nexo.example`. Não é caixa postal, não é para receber mensagens e não deve aparecer na interface.
+- **Provisionamento obrigatório no painel administrativo do Supabase Auth:** criar exatamente as duas contas com os identificadores técnicos definidos em `src/lib/householdUsers.ts`, senhas fortes exclusivas e e-mail marcado como confirmado pelo administrador. **Nunca inserir diretamente em `auth.users` por SQL, nunca salvar senhas no código ou no repositório.**
+- Desativar cadastros públicos no projeto Supabase depois de criar as duas contas; manter login por e-mail/senha do Auth ativo. Se uma das contas já existir, não recriar nem alterar senhas sem necessidade.
+- Como os endereços são fictícios, **não há recuperação de senha por e-mail**. Uma redefinição precisará ser feita pelo administrador do projeto até haver e-mail real/verificado ou outro método de recuperação.
+- Ambos precisam pertencer à mesma Casa; o primeiro morador cria a Casa e gera um convite. O segundo entra com seu login e o código. Não compartilham senha.
+- Os identificadores técnicos não são fator de autorização: permissões vêm do ID autenticado no Supabase e de RLS de membership da Casa.
+- Antes do merge, testar logins de ambos, impedir acesso indevido e verificar que o usuário sem sessão não lê estoque/fotos.
+
 ## Configuração necessária para testar
 
 1. Crie um projeto Supabase dedicado ao Casa Nexo. Evite usar banco de outros projetos.
@@ -32,7 +43,7 @@ Com um projeto Supabase conectado, disponibiliza:
    - `supabase/migrations/202611070001_shared_house_foundation.sql`
    - `supabase/migrations/202611070002_couple_finance.sql`
    Aplique primeiro em ambiente de desenvolvimento e revise as policies, triggers e as tabelas de Storage.
-3. No Supabase Authentication habilite **Email/Password** e configure **Site URL** e **Redirect URLs** apontando ao domínio do site. Configure SMTP para confirmação de cadastro se exigir verificação por e-mail. Verifique limites de e-mail e políticas contra cadastro indevido.
+3. No Supabase Authentication habilite **Email/Password**, crie as duas contas com **Auto Confirm** e configure **Site URL** e **Redirect URLs** apontando ao domínio do site. Não será enviado e-mail de cadastro para os endereços técnicos; desative cadastros públicos após o provisionamento. Verifique limites de e-mail e políticas contra cadastro indevido.
 4. Copie `.env.example` para `.env.local` e substitua somente `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (ou `VITE_SUPABASE_ANON_KEY`). No Netlify configure as mesmas variáveis em **Environment variables** e acione novo deploy.
 5. Execute:
    ```bash
@@ -42,7 +53,7 @@ Com um projeto Supabase conectado, disponibiliza:
    npm run build
    npm run dev
    ```
-6. Crie a conta do primeiro morador, a Casa e alguns locais. Em **Configurações**, gere um código e compartilhe com a noiva de forma privada. Ela cria a conta dela e usa “Entrar com convite”.
+6. Faça login como `matheus`, crie uma Casa e locais. Em **Configurações**, gere um código. Entre como `stephany` usando sua própria senha e use “Entrar com convite”.
 7. Cadastre um produto com foto em um celular; verifique no outro celular após atualização, teste quantidade +1/-1, produto acabando, validade e foto.
 8. Verifique que contas de outra Casa **não** veem produtos, objetos de Storage ou despesas dos demais; teste alteração indevida de `house_id`, `product_id`, `location_id` nas chamadas. A segurança depende de RLS, não de filtro no React.
 
