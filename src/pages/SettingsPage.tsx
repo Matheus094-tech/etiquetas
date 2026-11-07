@@ -9,12 +9,13 @@ export function SettingsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const houseId = house?.id ?? "";
   if (!house) return null;
 
   async function generateInvite() {
     setError(""); setInvite(""); setMessage(""); setBusy(true);
     try {
-      setInvite(await createInvite(house.id));
+      setInvite(await createInvite(houseId));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível criar convite.");
     } finally { setBusy(false); }
