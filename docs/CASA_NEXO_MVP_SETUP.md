@@ -25,6 +25,16 @@ Com um projeto Supabase conectado, disponibiliza:
 - Pendente: testar login e confirmação de e-mail, dois moradores reais, convites, leitura/escrita, armazenamento de fotos, policies de acesso entre Casas e fluxos de erro. Não afirmar que estão testados.
 - Auditoria Supabase acusou funções `SECURITY DEFINER` acessíveis a authenticated (convite e movimentação) e ausência intencional de policies diretas em `house_invites`; revisar permissões/risco antes de produção, além de índices para desempenho.
 
+## Provisionamento realizado no Supabase — 07/11/2026
+
+- Criadas e confirmadas as contas técnicas `matheus` e `stephany` pelo painel administrativo Auth, **sem senhas no repositório**.
+- O cadastro público e os logins anônimos foram desativados; autenticação Email/Password continua habilitada internamente.
+- Criada `Nossa Casa` com Matheus como proprietário e Stephany como moradora, ambos já associados. **Não precisam usar convites**.
+- Preparados três livros financeiros: `Nossa Casa` (compartilhado), `Minhas Finanças — Matheus` e `Minhas Finanças — Stephany` (privados). A interface financeira ainda não está implementada.
+- Testes de isolamento com papel `authenticated` e UID de cada usuário: Matheus e Stephany enxergam 1 Casa, 2 membros, 1 livro compartilhado e somente o próprio livro pessoal; identidade fora da Casa não enxerga registros. Os testes são SQL com RLS; **login real via interface ainda precisa de homologação**.
+- Senhas iniciais são temporárias e devem ser substituídas por cada morador em **Configurações → Alterar minha senha**. A atualização usa Supabase Auth, valida a senha atual e não grava senhas em localStorage nem nos repositórios.
+- Como não existem caixas postais reais, perda de senha requer redefinição administrativa. Antes de guardar dados financeiros sensíveis, definir processo de recuperação e reavaliar o risco de identidades sem e-mail verificável.
+
 ## Acesso sem e-mail — Matheus e Stephany (solicitado em 07/11/2026)
 
 - A interface do preview aceita apenas **usuário e senha**; os logins são `matheus` e `stephany`. Não há campo e-mail nem opção de cadastro público.
