@@ -16,6 +16,15 @@ Com um projeto Supabase conectado, disponibiliza:
 
 **Não implementa ainda** lista de compras, análise automática de fotos por IA, leitura de comprovantes, financeiro, faturas, controle de parcelamentos, atualização de múltiplos lotes na interface, redução do tamanho das fotos ou PWA/offline. Esses módulos continuam no plano `docs/CASA_NEXO_PLAN.md`.
 
+## Ambiente de desenvolvimento conectado — 07/11/2026
+
+- Projeto Supabase dedicado: `casa-nexo` (ref pública `yjvtihujlzydefsorxrn`, região `sa-east-1`).
+- Migrations `shared_house_foundation` e `couple_finance`: aplicadas no novo projeto com sucesso.
+- Netlify site `etiquetasms`: configuradas as variáveis públicas `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` em **All scopes / All deploy contexts** (valores omitidos deste repositório).
+- Este commit dispara nova prévia do PR #4 para incorporar as variáveis no build.
+- Pendente: testar login e confirmação de e-mail, dois moradores reais, convites, leitura/escrita, armazenamento de fotos, policies de acesso entre Casas e fluxos de erro. Não afirmar que estão testados.
+- Auditoria Supabase acusou funções `SECURITY DEFINER` acessíveis a authenticated (convite e movimentação) e ausência intencional de policies diretas em `house_invites`; revisar permissões/risco antes de produção, além de índices para desempenho.
+
 ## Configuração necessária para testar
 
 1. Crie um projeto Supabase dedicado ao Casa Nexo. Evite usar banco de outros projetos.
