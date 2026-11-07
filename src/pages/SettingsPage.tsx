@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth, useHouse } from "../app/CasaProviders";
 import { createInvite } from "../lib/casaApi";
+import { displayUsername } from "../lib/householdUsers";
 
 export function SettingsPage() {
   const { session, signOut } = useAuth();
@@ -56,11 +57,11 @@ export function SettingsPage() {
             Copiar código
           </button>
         </div>}
-        <p className="casa-hint">A pessoa convidada cria a própria conta e cola o código em “Entrar com convite”.</p>
+        <p className="casa-hint">Stephany pode entrar com a conta já cadastrada e usar o código para ingressar nesta Casa.</p>
       </div>
       <div className="casa-panel casa-form">
         <h3>Sua conta</h3>
-        <p>Conectado como <strong>{session?.user.email}</strong></p>
+        <p>Conectado como <strong>{displayUsername(session?.user.email)}</strong></p>
         <button className="casa-secondary" onClick={() => { void signOut(); }}>Sair da conta</button>
       </div>
       {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
