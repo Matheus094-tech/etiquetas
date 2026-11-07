@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useAuth, useHouse } from "../app/CasaProviders";
 import { createInvite, changePassword } from "../lib/casaApi";
 import { displayUsername } from "../lib/householdUsers";
@@ -26,7 +26,7 @@ export function SettingsPage() {
     } finally { setBusy(false); }
   }
 
-  async function submitPassword(event: React.FormEvent<HTMLFormElement>) {
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setMessage("");
