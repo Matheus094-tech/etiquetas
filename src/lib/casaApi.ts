@@ -129,6 +129,33 @@ export async function validAccessToken(): Promise<string> {
   if (!session) throw new Error("Sua sessão expirou.");
   return session.access_token;
 }
+/** Troca a senha da conta autenticada, sem usar e-mail de recuperação. */
+export async function changePassword(currentPassword: string, nextPassword: string) {
+  const current = getSession();
+  if (!current?.user.email) throw new Error("Entre novamente na sua conta.");
+  if (nextPassword.length < 12) throw new Error("A nova senha deve ter pelo menos 12 caracteres.");
+  if (nextPassword === currentPassword) throw new Error("Escolha uma senha diferente da anterior.");
+
+  // Verifica a senha atual na API de autenticação antes de permitir a troca.
+  const verified = await authRequest<AuthPayload>(
+    "token?grant_type=password",
+    { email: current.user.email, password: currentPassword },
+  );
+  if (verified.user.id !== current.user.id) {
+    throw new Error("Falha ao validar a identidade da conta.");
+  }
+  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: "PUT",
+    headers: {
+      apikey: API_KEY,
+      Authorization: `Bearer ${await validAccessToken()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ password: nextPassword, current_password: currentPassword }),
+  });
+  await parseResponse(response);
+}
+
 export async function logout() {
   const token = session?.access_token;
   saveSession(null);
