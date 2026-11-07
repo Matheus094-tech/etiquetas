@@ -46,6 +46,21 @@ function HouseInventory({ houseId }: { houseId: string }) {
       setError("A quantidade inicial deve ser um número inteiro não negativo.");
       return;
     }
+    if (!Number.isInteger(form.reorderAt) || form.reorderAt < 0) {
+      setError("O estoque mínimo deve ser um número inteiro não negativo.");
+      return;
+    }
+    const normalize = (value: string) => value.normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "").trim().toLocaleLowerCase("pt-BR");
+    const alreadyExists = items.some((item) =>
+      normalize(item.name) === normalize(form.name)
+      && normalize(item.brand ?? "") === normalize(form.brand)
+      && normalize(item.package_description ?? "") === normalize(form.packageDescription)
+    );
+    if (alreadyExists) {
+      setError("Este produto já está cadastrado. Use o botão + no produto existente para atualizar a quantidade.");
+      return;
+    }
     setWorking(true);
     try {
       const result = await createProduct({
@@ -157,7 +172,7 @@ function HouseInventory({ houseId }: { houseId: string }) {
               onChange={(event) => setForm({ ...form, expiresOn: event.target.value })} />
           </label>
           <label>Fotografia do produto
-            <input ref={fileInput} type="file" accept="image/*" capture="environment"
+            <input ref={fileInput} type="file" accept="image/*"
               onChange={(event) => setPhoto(event.target.files?.[0] ?? null)} />
             <small>Você pode fotografar agora ou escolher da galeria (até 8 MB).</small>
           </label>
@@ -226,7 +241,7 @@ function HouseInventory({ houseId }: { houseId: string }) {
                 </div>
                 <label className="casa-photo-button">
                   {updatingId === item.id ? "Aguarde…" : item.photo_path ? "Trocar foto" : "Adicionar foto"}
-                  <input type="file" accept="image/*" capture="environment" disabled={updatingId === item.id}
+                  <input type="file" accept="image/*" disabled={updatingId === item.id}
                     onChange={(event) => {
                       void updatePhoto(item.id, event.target.files?.[0]);
                       event.target.value = "";
