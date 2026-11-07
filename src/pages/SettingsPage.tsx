@@ -108,7 +108,7 @@ export function SettingsPage() {
         <button className="casa-primary" disabled={changingPassword}>
           {changingPassword ? "Atualizando…" : "Salvar nova senha"}
         </button>
-      </div>
+      </form>
       {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
       {message && <p className="casa-alert casa-alert--success" role="status">{message}</p>}
     </section>
