@@ -52,6 +52,35 @@ describe("Casa Nexo API", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("troca a senha apenas após validar a senha atual", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(authPayload))
+      .mockResolvedValueOnce(jsonResponse(authPayload))
+      .mockResolvedValueOnce(jsonResponse({ id: "user-123" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { login, changePassword } = await import("./casaApi");
+    await login("morador@example.com", "senhaAtual123!");
+    await changePassword("senhaAtual123!", "novaSenhaLonga123!@#");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const updateOptions = fetchMock.mock.calls[2][1] as RequestInit;
+    expect(updateOptions.method).toBe("PUT");
+    expect(fetchMock.mock.calls[2][0]).toContain("/auth/v1/user");
+    expect(JSON.parse(updateOptions.body as string)).toEqual({
+      password: "novaSenhaLonga123!@#", current_password: "senhaAtual123!",
+    });
+    expect(localStorage.getItem("casa-nexo-auth-session-v1")).not.toContain("novaSenhaLonga123!@#");
+  });
+
+  it("recusa troca de senha curta ou igual à anterior sem chamar o servidor", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(authPayload));
+    vi.stubGlobal("fetch", fetchMock);
+    const { login, changePassword } = await import("./casaApi");
+    await login("morador@example.com", "senhaAtual123!");
+    await expect(changePassword("senhaAtual123!", "curta")).rejects.toThrow("pelo menos 12");
+    await expect(changePassword("senhaAtual123!", "senhaAtual123!")).rejects.toThrow("diferente");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("encerra a sessão local ao sair, mesmo se o servidor falhar", async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(authPayload))
       .mockRejectedValueOnce(new Error("offline"));
