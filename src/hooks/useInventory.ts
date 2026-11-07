@@ -39,22 +39,30 @@ export function useInventory(houseId: string) {
     };
   }, [reload]);
 
+  // As URLs são privadas e expiram; renová-las evita imagens quebradas após 10 min.
+  const photoPathsKey = items.map((item) => item.photo_path).filter(Boolean).join("|");
   useEffect(() => {
     let active = true;
-    const paths = Array.from(new Set(items.map((item) => item.photo_path).filter(
-      (path): path is string => Boolean(path)
-    )));
-    void Promise.all(paths.map(async (path) => {
-      try { return [path, await signedProductPhoto(path)] as const; }
-      catch { return null; }
-    })).then((rows) => {
+    const paths = Array.from(new Set(photoPathsKey.split("|").filter(Boolean)));
+    async function updateSignedUrls() {
+      const rows = await Promise.all(paths.map(async (path) => {
+        try { return [path, await signedProductPhoto(path)] as const; }
+        catch { return null; }
+      }));
       if (!active) return;
       setPhotoUrls(Object.fromEntries(rows.filter(
         (row): row is readonly [string, string] => row !== null
       )));
-    });
-    return () => { active = false; };
-  }, [items.map((item) => item.photo_path).join("|")]);
+    }
+    void updateSignedUrls();
+    const id = window.setInterval(() => { void updateSignedUrls(); }, 8 * 60_000);
+    window.addEventListener("focus", updateSignedUrls);
+    return () => {
+      active = false;
+      window.clearInterval(id);
+      window.removeEventListener("focus", updateSignedUrls);
+    };
+  }, [photoPathsKey]);
 
   return { items, locations, photoUrls, loading, error, reload };
 }
