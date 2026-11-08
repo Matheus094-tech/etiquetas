@@ -1,14 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../app/CasaProviders";
-import { lookupHouseholdEmail } from "../lib/casaApi";
+import { loginHousehold } from "../lib/casaApi";
 import "../styles/casa.css";
 
 export function LoginPage() {
-  const { session, signIn } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [activationCode, setActivationCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -19,8 +20,7 @@ export function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      const identity = await lookupHouseholdEmail(username);
-      await signIn(identity, password);
+      await loginHousehold(username, password, activationCode);
       navigate("/", { replace: true });
     } catch {
       // Não revelar se o nome de usuário existe ou não.
@@ -47,11 +47,22 @@ export function LoginPage() {
           </label>
           <label htmlFor="casa-password">
             Senha
-            <input id="casa-password" type="password" minLength={8}
+            <input id="casa-password" type="password" minLength={12}
               autoComplete="current-password" value={password}
               onChange={(event) => setPassword(event.target.value)}
               required placeholder="Sua senha" />
           </label>
+          <details>
+            <summary className="casa-link" style={{ cursor: "pointer" }}>
+              Primeiro login neste dispositivo? Tenho um código
+            </summary>
+            <label>Código de ativação (opcional nos próximos acessos)
+              <input type="text" autoCapitalize="none" autoCorrect="off"
+                autoComplete="off" value={activationCode}
+                onChange={(event) => setActivationCode(event.target.value)}
+                placeholder="Código que recebeu na ativação" />
+            </label>
+          </details>
           {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
           <button className="casa-primary" disabled={busy}>
             {busy ? "Entrando…" : "Entrar"}
