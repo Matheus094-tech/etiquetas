@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../app/CasaProviders";
-import { emailForUsername } from "../lib/householdUsers";
+import { lookupHouseholdEmail } from "../lib/casaApi";
 import "../styles/casa.css";
 
 export function LoginPage() {
@@ -19,7 +19,7 @@ export function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      const identity = emailForUsername(username);
+      const identity = await lookupHouseholdEmail(username);
       await signIn(identity, password);
       navigate("/", { replace: true });
     } catch {
@@ -58,8 +58,9 @@ export function LoginPage() {
           </button>
         </form>
         <p className="casa-hint" style={{ marginTop: "1rem" }}>
-          Acesso reservado aos moradores. As contas são criadas pelo administrador.
+          Acesso reservado aos moradores. Já ativou sua conta?
         </p>
+        <Link to="/ativar" className="casa-link">Primeiro acesso? Criar minha senha →</Link>
       </div>
     </main>
   );
