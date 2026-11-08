@@ -3,14 +3,16 @@
  * Nenhuma credencial PostgreSQL, chave administrativa ou senha fica no navegador.
  * Tokens são geridos pelo SDK Neon. A Data API usa JWT + RLS.
  */
-import { createAuthClient } from "@neon/neon-js/auth";
+import { createClient } from "@neon/neon-js";
+import { BetterAuthReactAdapter } from "@neon/neon-js/auth/react/adapters";
 
 const NEON_DATABASE_URL = (import.meta.env.VITE_NEON_DATABASE_URL ?? "").replace(/\/$/, "");
 const NEON_DATA_API_URL = (import.meta.env.VITE_NEON_DATA_API_URL ?? "").replace(/\/$/, "");
 
 export const casaConfigured = Boolean(NEON_DATABASE_URL && NEON_DATA_API_URL);
-const NEON_AUTH_URL = NEON_DATABASE_URL.replace(".c-2.", ".neonauth.c-2.") + "/auth";
-const neon = casaConfigured ? createAuthClient(NEON_AUTH_URL) : null;
+const neon = casaConfigured
+  ? createClient(NEON_DATABASE_URL, { auth: { adapter: BetterAuthReactAdapter() } })
+  : null;
 
 export type Session = {
   access_token: string;
@@ -57,7 +59,7 @@ function unwrapError(error: unknown, fallback: string): Error {
 export async function initializeSession(): Promise<Session | null> {
   if (!casaConfigured) { publishSession(null); return null; }
   try {
-    const { data, error } = await requireClient().getSession();
+    const { data, error } = await requireClient().auth.getSession();
     if (error || !data?.user || !data.session) {
       publishSession(null);
       return null;
@@ -76,14 +78,14 @@ export async function initializeSession(): Promise<Session | null> {
   }
 }
 export async function login(email: string, password: string): Promise<void> {
-  const { error } = await requireClient().signIn.email({ email, password });
+  const { error } = await requireClient().auth.signIn.email({ email, password });
   if (error) throw unwrapError(error, "Usuário ou senha incorretos.");
   const active = await initializeSession();
   if (!active) throw new Error("Não foi possível estabelecer a sessão. Entre novamente.");
 }
 export async function logout() {
   try {
-    if (neon) await neon.signOut();
+    if (neon) await neon.auth.signOut();
   } finally {
     publishSession(null);
   }
