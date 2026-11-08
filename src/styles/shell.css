@@ -92,3 +92,17 @@
   color: var(--color-muted);
   font-size: 0.85rem;
 }
+
+/* Navegação da Casa em telas pequenas: rolagem horizontal, sem estourar a viewport. */
+@media (max-width: 760px) {
+  .shell__header { padding: 1rem 0 0; }
+  .shell__header-inner { display: block; }
+  .shell__brand { padding: 0 1rem 1rem; }
+  .shell__nav {
+    gap: .25rem; overflow-x: auto; overscroll-behavior-x: contain;
+    padding: 0 .7rem .7rem; width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+  .shell__nav-link { white-space: nowrap; font-size: .84rem; padding: .6rem .75rem; }
+  .shell__main { padding: 1.25rem 1rem 2rem; }
+}

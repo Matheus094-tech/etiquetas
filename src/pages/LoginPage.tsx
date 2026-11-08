@@ -1,0 +1,66 @@
+import { useState, type FormEvent } from "react";
+import { Navigate, useNavigate } from "react-router-dom";
+import { useAuth } from "../app/CasaProviders";
+import { emailForUsername } from "../lib/householdUsers";
+import "../styles/casa.css";
+
+export function LoginPage() {
+  const { session, signIn } = useAuth();
+  const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  if (session) return <Navigate to="/" replace />;
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setBusy(true);
+    try {
+      const identity = emailForUsername(username);
+      await signIn(identity, password);
+      navigate("/", { replace: true });
+    } catch {
+      // Não revelar se o nome de usuário existe ou não.
+      setError("Usuário ou senha incorretos.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="casa-auth">
+      <div className="casa-auth__card">
+        <span className="casa-eyebrow">M&S · Um produto MB Software</span>
+        <h1>Casa Nexo</h1>
+        <p>O que temos, o que falta e o que precisamos comprar. Tudo em um só lugar.</p>
+        <h2>Entrar na nossa Casa</h2>
+        <form className="casa-form" onSubmit={submit}>
+          <label htmlFor="casa-username">
+            Usuário
+            <input id="casa-username" type="text" autoCapitalize="none" autoCorrect="off"
+              autoComplete="username" value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              required maxLength={40} placeholder="matheus ou stephany" />
+          </label>
+          <label htmlFor="casa-password">
+            Senha
+            <input id="casa-password" type="password" minLength={8}
+              autoComplete="current-password" value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required placeholder="Sua senha" />
+          </label>
+          {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
+          <button className="casa-primary" disabled={busy}>
+            {busy ? "Entrando…" : "Entrar"}
+          </button>
+        </form>
+        <p className="casa-hint" style={{ marginTop: "1rem" }}>
+          Acesso reservado aos moradores. As contas são criadas pelo administrador.
+        </p>
+      </div>
+    </main>
+  );
+}

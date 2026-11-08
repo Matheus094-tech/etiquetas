@@ -1,3 +1,19 @@
+# Casa Nexo — gestão da casa M&S
+
+O Casa Nexo evolui o **Gerador de Etiquetas M&S** para uma plataforma de organização compartilhada do lar. O MVP de autenticação e estoque está no PR de evolução do projeto.
+
+**Duas modalidades de execução**:
+- **Sem Supabase configurado:** mantém integralmente o gerador de etiquetas anterior, acessível em `/etiquetas`; seu histórico continua no `localStorage`.
+- **Com Supabase configurado:** ativa autenticação individual, criação/entrada por convite na mesma Casa, tela inicial, armários, estoque compartilhado, fotografias privadas, quantidades, alertas e o gerador original de etiquetas.
+
+**Como configurar:** consulte [Casa Nexo — setup do MVP](docs/CASA_NEXO_MVP_SETUP.md). A arquitetura futura de listas, financeiro pessoal/compartilhado e assistência por fotos está em [Plano Casa Nexo](docs/CASA_NEXO_PLAN.md).
+
+> **Atenção:** o modo compartilhado depende de um banco Supabase com as migrations aplicadas e de variáveis de ambiente configuradas na Netlify. No primeiro MVP, a identificação de produto por IA a partir de fotografia ainda não está disponível; a foto fica associada ao cadastro manual.
+
+---
+
+## Documentação histórica do gerador de etiquetas
+
 # Gerador de Etiquetas M&S
 
 Ferramenta de uso pessoal, desenvolvida pela **MB Software**, para gerar etiquetas de
