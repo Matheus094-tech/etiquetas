@@ -14,6 +14,19 @@
 - Após migração, remover as variáveis Netlify `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (em todos os contextos) e configurar apenas as variáveis públicas exigidas pela nova integração. **Não fazer essa mudança até o Neon estar operacional.**
 - Manter o gerador de etiquetas M&S original preservado durante a transição.
 
+## Neon — migração do banco concluída parcialmente (08/11/2026)
+
+- Projeto Neon: `casa-nexo` (`dawn-hill-01046642`, branch `main`, PostgreSQL 17, AWS São Paulo).
+- Backend Neon Auth (Managed Better Auth): provisionado; cadastro público desabilitado; verificação de e-mail desnecessária no ambiente atual.
+- Neon Data API: ativada para o banco `casa_nexo` usando Neon Auth. A API usa JWT + RLS; **não** colocar credenciais PostgreSQL no navegador.
+- Migrations portadas para `neon/migrations/001_shared_house.sql` e `002_couple_finance.sql`, **executadas com sucesso** no banco Neon: 21 tabelas e 73 políticas RLS.
+- A adaptação usa `neon_auth."user"(id)` no lugar de `auth.users(id)`; os IDs de usuários **mudaram** em relação ao antigo Supabase.
+- Duas identidades técnicas criadas pelo Neon Admin Auth: `matheus` e `stephany`; `Nossa Casa` e os três livros financeiros preparados. **Não foi validado login com senha no Neon.** A ação administrativa de criação de usuário não permite configurar uma senha diretamente, e as identidades aparecem sem verificação de e-mail; não presumir que podem efetuar login.
+- Os esquemas de armazenamento `storage.buckets` / `storage.objects` do Supabase **não se aplicam ao Neon**. Neon Object Storage não está disponível na região `aws-sa-east-1`. Fotos devem usar um provedor separado com URLs assinadas e autorização por morador, antes da liberação em produção.
+- Frontend **ainda aponta ao Supabase pausado**, portanto PR #4 **não está pronto para merge**. A autenticação e o cliente REST de `src/lib/casaApi.ts` precisam ser migrados para Neon SDK, com ajustes para armazenamento.
+- Vaga de Supabase liberada: `confeitium` e `apego-croche` confirmados `ACTIVE_HEALTHY`; Supabase `casa-nexo` confirmado `INACTIVE`, sem exclusão.
+- Priorizar: (1) credenciais gerenciadas no Neon com um fluxo de recuperação real, (2) auth + JWT + RLS no frontend, (3) storage privado compatível, (4) testes ponta a ponta e configurações da Netlify.
+
 ## Escopo deste PR
 
 Com um projeto Supabase conectado, disponibiliza:
