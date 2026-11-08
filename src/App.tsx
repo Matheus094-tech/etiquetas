@@ -11,7 +11,8 @@ import { LoginPage } from "./pages/LoginPage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 function RequireAuth() {
-  const { session } = useAuth();
+  const { session, authReady } = useAuth();
+  if (!authReady) return <main className="casa-onboarding"><p>Verificando sua sessão…</p></main>;
   return session ? <Outlet /> : <Navigate to="/login" replace />;
 }
 function HouseLayout() {
