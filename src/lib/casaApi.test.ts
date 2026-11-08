@@ -6,8 +6,12 @@ const authMock = vi.hoisted(() => ({
   signUp: vi.fn(),
   signOut: vi.fn(),
 }));
+const databaseMock = vi.hoisted(() => ({
+  from: vi.fn(),
+  rpc: vi.fn(),
+}));
 vi.mock("@neon/neon-js/supabase", () => ({
-  createClient: vi.fn(() => ({ auth: authMock })),
+  createClient: vi.fn(() => ({ auth: authMock, ...databaseMock })),
 }));
 const fakeSession = {
   access_token: "neon-jwt-test",
@@ -30,6 +34,10 @@ beforeEach(() => {
   authMock.signInWithPassword.mockReset().mockResolvedValue({ data: { session: fakeSession }, error: null });
   authMock.signUp.mockReset().mockResolvedValue({ data: { user: fakeSession.user }, error: null });
   authMock.signOut.mockReset().mockResolvedValue({ error: null });
+  databaseMock.from.mockReset().mockImplementation(() => ({
+    select: vi.fn(() => ({ order: vi.fn().mockResolvedValue({ data: [{ id: "casa-1", name: "Nossa Casa" }], error: null }) })),
+  }));
+  databaseMock.rpc.mockReset().mockResolvedValue({ data: "casa-123", error: null });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -51,13 +59,18 @@ describe("Casa Nexo no Neon", () => {
       email: "matheus@users.casa-nexo.example", password: "senha-temporaria",
     });
   });
-  it("usa JWT sem chave Supabase e a URL correta da Data API", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(response([{ id: "casa-1", name: "Nossa Casa" }]));
-    vi.stubGlobal("fetch", fetchMock);
+  it("consulta as Casas pelo cliente Neon que administra o JWT", async () => {
     const { getHouses } = await import("./casaApi");
     expect((await getHouses())[0].name).toBe("Nossa Casa");
+    expect(databaseMock.from).toHaveBeenCalledWith("houses");
+  });
+  it("mantém API REST protegida por JWT sem chave Supabase", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response([]));
+    vi.stubGlobal("fetch", fetchMock);
+    const { apiRequest } = await import("./casaApi");
+    await apiRequest("GET", "products?select=id");
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain(".apirest.c-2.sa-east-1.aws.neon.tech/casa_nexo/rest/v1/houses");
+    expect(url).toContain(".apirest.c-2.sa-east-1.aws.neon.tech/casa_nexo/rest/v1/products");
     expect((options.headers as Record<string, string>).Authorization).toBe("Bearer neon-jwt-test");
     expect((options.headers as Record<string, string>)).not.toHaveProperty("apikey");
   });
@@ -111,17 +124,16 @@ describe("Casa Nexo no Neon", () => {
   it("registra a senha no Neon e vincula a Casa somente após confirmação pelo banco", async () => {
     const digest = new Uint8Array(32).fill(0xab);
     vi.stubGlobal("crypto", { subtle: { digest: vi.fn().mockResolvedValue(digest.buffer) } });
-    const fetchMock = vi.fn().mockResolvedValue(response("casa-123"));
-    vi.stubGlobal("fetch", fetchMock);
+
     const { activateHouseholdAccount } = await import("./casaApi");
     await activateHouseholdAccount("matheus", "codigo-ficticio", "SenhaLongaPrivada123!");
     expect(authMock.signUp).toHaveBeenCalledWith(expect.objectContaining({
       email: "matheus.setup.abababababababababababab@users.casa-nexo.example",
       password: "SenhaLongaPrivada123!",
     }));
-    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toContain("/rpc/claim_household_activation");
-    expect((options.headers as Record<string,string>).Authorization).toBe("Bearer neon-jwt-test");
+    expect(databaseMock.rpc).toHaveBeenCalledWith("claim_household_activation", {
+      p_username: "matheus", p_code: "codigo-ficticio",
+    });
     expect(localStorage.getItem("casa-nexo-neon-identity-v1-matheus"))
       .toBe("matheus.setup.abababababababababababab@users.casa-nexo.example");
     expect(JSON.stringify(localStorage)).not.toContain("SenhaLongaPrivada123!");
