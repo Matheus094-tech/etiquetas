@@ -108,6 +108,25 @@ describe("Casa Nexo no Neon", () => {
     await expect(lookupHouseholdEmail("intruso")).rejects.toThrow("Usuário inválido");
   });
 
+  it("registra a senha no Neon e vincula a Casa somente após confirmação pelo banco", async () => {
+    const digest = new Uint8Array(32).fill(0xab);
+    vi.stubGlobal("crypto", { subtle: { digest: vi.fn().mockResolvedValue(digest.buffer) } });
+    const fetchMock = vi.fn().mockResolvedValue(response("casa-123"));
+    vi.stubGlobal("fetch", fetchMock);
+    const { activateHouseholdAccount } = await import("./casaApi");
+    await activateHouseholdAccount("matheus", "codigo-ficticio", "SenhaLongaPrivada123!");
+    expect(authMock.signUp).toHaveBeenCalledWith(expect.objectContaining({
+      email: "matheus.setup.abababababababababababab@users.casa-nexo.example",
+      password: "SenhaLongaPrivada123!",
+    }));
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/rpc/claim_household_activation");
+    expect((options.headers as Record<string,string>).Authorization).toBe("Bearer neon-jwt-test");
+    expect(localStorage.getItem("casa-nexo-neon-identity-v1-matheus"))
+      .toBe("matheus.setup.abababababababababababab@users.casa-nexo.example");
+    expect(JSON.stringify(localStorage)).not.toContain("SenhaLongaPrivada123!");
+    expect(JSON.stringify(localStorage)).not.toContain("codigo-ficticio");
+  });
   it("não mantém sessão após logout", async () => {
     const { getSession, login, logout } = await import("./casaApi");
     await login("matheus@users.casa-nexo.example", "senha");
