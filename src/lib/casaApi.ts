@@ -97,7 +97,7 @@ export async function loginHousehold(input: string, password: string, activation
 export async function activateHouseholdAccount(input: string, code: string, password: string) {
   const username = normalizeHouseholdUsername(input);
   if (!["matheus", "stephany"].includes(username)) throw new Error("Morador inválido.");
-  if (password.length < 12) throw new Error("Use uma senha com pelo menos 12 caracteres.");
+  if (password.length < 8) throw new Error("Use uma senha com pelo menos 8 caracteres.");
   const cleanCode = code.trim();
   if (!cleanCode || cleanCode.length > 128) throw new Error("Código de ativação inválido.");
   const email = await activationEmail(username, cleanCode);
