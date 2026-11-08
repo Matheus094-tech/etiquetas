@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   signIn: vi.fn(),
   getSession: vi.fn(),
   signOut: vi.fn(),
+  getJWTToken: vi.fn(),
 }));
 vi.mock("@neon/neon-js/auth/react/adapters", () => ({
   BetterAuthReactAdapter: vi.fn(() => ({})),
@@ -14,6 +15,7 @@ vi.mock("@neon/neon-js", () => ({
       signIn: { email: mocks.signIn },
       getSession: mocks.getSession,
       signOut: mocks.signOut,
+      getJWTToken: mocks.getJWTToken,
     },
   })),
 }));
@@ -36,6 +38,7 @@ beforeEach(() => {
   mocks.signIn.mockResolvedValue({ data: testSession.data, error: null });
   mocks.getSession.mockResolvedValue(testSession);
   mocks.signOut.mockResolvedValue({ error: null });
+  mocks.getJWTToken.mockResolvedValue("eyJ.test.jwt");
 });
 afterEach(() => {
   vi.unstubAllGlobals();
