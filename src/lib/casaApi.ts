@@ -200,11 +200,44 @@ export async function changeStock(lotId: string, delta: number, reason: "compra"
   });
 }
 
-export async function uploadProductPhoto(_houseId: string, _productId: string, _file: File): Promise<string> {
-  void _houseId; void _productId; void _file;
-  throw new Error("Fotos indisponíveis nesta etapa da migração. Nenhum arquivo foi enviado.");
+export async function validAccessToken(): Promise<string> {
+  return token();
 }
-export async function signedProductPhoto(_path: string): Promise<string> {
-  void _path;
-  throw new Error("Fotos aguardam armazenamento privado.");
+export async function uploadProductPhoto(houseId: string, productId: string, file: File): Promise<string> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Use uma foto JPG, PNG ou WebP.");
+  }
+  if (file.size === 0 || file.size > 8 * 1024 * 1024) {
+    throw new Error("A foto deve ter até 8 MB.");
+  }
+  const query = new URLSearchParams({ house_id: houseId, product_id: productId });
+  const response = await fetch(`/.netlify/functions/product-photo?${query}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${await token()}`,
+      "Content-Type": file.type,
+    },
+    body: file,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Falha ao enviar foto (${response.status}).`);
+  }
+  const { path } = await response.json() as { path: string };
+  await apiRequest("PATCH", "products?" + params({
+    id: `eq.${productId}`, house_id: `eq.${houseId}`,
+  }), { photo_path: path });
+  return path;
+}
+export async function signedProductPhoto(path: string): Promise<string> {
+  // Formato privado: <house_id>/products/<product_id>-<uuid>.ext
+  const match = path.match(/^([0-9a-f-]{36})\/products\/([0-9a-f-]{36})-[0-9a-f-]{36}\.(jpg|png|webp)$/i);
+  if (!match) throw new Error("Caminho de fotografia inválido.");
+  const query = new URLSearchParams({ house_id: match[1], product_id: match[2], path });
+  const response = await fetch(`/.netlify/functions/product-photo?${query}`, {
+    headers: { Authorization: `Bearer ${await token()}` },
+  });
+  if (!response.ok) throw new Error("Não foi possível carregar fotografia privada.");
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
