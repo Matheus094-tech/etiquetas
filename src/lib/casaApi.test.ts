@@ -5,11 +5,16 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   signOut: vi.fn(),
 }));
-vi.mock("@neon/neon-js/auth", () => ({
-  createAuthClient: vi.fn(() => ({
-    signIn: { email: mocks.signIn },
-    getSession: mocks.getSession,
-    signOut: mocks.signOut,
+vi.mock("@neon/neon-js/auth/react/adapters", () => ({
+  BetterAuthReactAdapter: vi.fn(() => ({})),
+}));
+vi.mock("@neon/neon-js", () => ({
+  createClient: vi.fn(() => ({
+    auth: {
+      signIn: { email: mocks.signIn },
+      getSession: mocks.getSession,
+      signOut: mocks.signOut,
+    },
   })),
 }));
 
