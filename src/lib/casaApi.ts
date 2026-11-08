@@ -97,7 +97,8 @@ export async function validAccessToken(): Promise<string> {
  * Neon Managed Better Auth exige um fluxo verificado de redefinição.
  * Nunca atualizar neon_auth.account por SQL nem simular sucesso.
  */
-export async function changePassword(_currentPassword: string, _nextPassword: string): Promise<never> {
+export async function changePassword(currentPassword: string, nextPassword: string): Promise<never> {
+  void currentPassword; void nextPassword;
   throw new Error("Troca de senha temporariamente indisponível. A recuperação precisa ser configurada pelo administrador do Neon.");
 }
 
