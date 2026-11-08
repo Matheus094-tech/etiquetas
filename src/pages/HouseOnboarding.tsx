@@ -3,7 +3,7 @@ import { useAuth, useHouse } from "../app/CasaProviders";
 import { displayUsername } from "../lib/householdUsers";
 
 export function HouseOnboarding() {
-  const { error: loadError, create, join } = useHouse();
+  const { error: loadError, create, join, reload } = useHouse();
   const { session, signOut } = useAuth();
   const [name, setName] = useState("Nossa Casa");
   const [code, setCode] = useState("");
@@ -25,6 +25,27 @@ export function HouseOnboarding() {
     event.preventDefault();
     void submit(() => join(code));
   };
+  const isProvisionedResident = /^(matheus|stephany)\.setup\./i.test(session?.user.email ?? "");
+  if (isProvisionedResident) {
+    return (
+      <main className="casa-onboarding">
+        <div className="casa-panel">
+          <span className="casa-eyebrow">Casa Nexo · Acesso compartilhado</span>
+          <h1>Sua Casa já existe</h1>
+          <p>Olá, {displayUsername(session?.user.email)}. Sua conta está cadastrada na Nossa Casa.
+            Se ela ainda não apareceu, atualize a sessão. Não crie outra Casa.</p>
+          {(error || loadError) && <p className="casa-alert casa-alert--error" role="alert">{error || loadError}</p>}
+          <button className="casa-primary" type="button" disabled={busy}
+            onClick={() => { void submit(reload); }}>
+            {busy ? "Atualizando…" : "Recarregar Nossa Casa"}
+          </button>
+          <button className="casa-link" type="button" onClick={() => { void signOut(); }}>
+            Sair da conta
+          </button>
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="casa-onboarding">
       <div className="casa-panel">
