@@ -52,6 +52,16 @@ describe("Casa Nexo no Neon", () => {
     expect(getSession()?.user.id).toBe("user-123");
     expect(getSession()?.access_token).toBe("neon-jwt-test");
   });
+  it("recupera o alias técnico após a sessão de uma ativação parcial", async () => {
+    const email = "matheus.setup.b01e85eb717de90d8603850a@users.casa-nexo.example";
+    authMock.getSession.mockResolvedValueOnce({ data: {
+      session: { ...fakeSession, user: { ...fakeSession.user, email } },
+      user: { ...fakeSession.user, email },
+    }, error: null });
+    const { restoreSession } = await import("./casaApi");
+    await restoreSession();
+    expect(localStorage.getItem("casa-nexo-neon-identity-v1-matheus")).toBe(email);
+  });
   it("faz login usando o provedor Neon Auth", async () => {
     const { login } = await import("./casaApi");
     await login("matheus@users.casa-nexo.example", "senha-temporaria");
