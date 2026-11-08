@@ -17,7 +17,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install Neon SDK
-        run: npm install @neon/neon-js --save
+        run: npm install @neon/neon-js @netlify/blobs --save
       - name: Commit lockfile to migration branch
         run: |
           git config user.name "github-actions[bot]"
