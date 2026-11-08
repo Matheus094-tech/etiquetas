@@ -6,3 +6,9 @@
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Public endpoints only. Applies solely to Deploy Previews, never to production.
+# Do NOT put PostgreSQL DATABASE_URL or privileged keys in this file.
+[context.deploy-preview.environment]
+  VITE_NEON_DATABASE_URL = "https://ep-dark-darkness-b6wnyw96.c-2.sa-east-1.aws.neon.tech/casa_nexo"
+  VITE_NEON_DATA_API_URL = "https://ep-dark-darkness-b6wnyw96.apirest.c-2.sa-east-1.aws.neon.tech/casa_nexo/rest/v1"
