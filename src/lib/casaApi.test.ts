@@ -99,8 +99,8 @@ describe("Casa Nexo no Neon", () => {
   });
   it("não cria contas quando a senha de ativação é fraca", async () => {
     const { activateHouseholdAccount } = await import("./casaApi");
-    await expect(activateHouseholdAccount("matheus", "codigo_teste", "Admin123"))
-      .rejects.toThrow("12 caracteres");
+    await expect(activateHouseholdAccount("matheus", "codigo_teste", "abc"))
+      .rejects.toThrow("8 caracteres");
     expect(authMock.signUp).not.toHaveBeenCalled();
   });
   it("não resolve usuários fora da lista fechada de moradores", async () => {
