@@ -81,6 +81,7 @@ export async function logout() {
  * administrativo no Neon Auth. Não oferecer alteração local insegura.
  */
 export async function changePassword(_currentPassword: string, _nextPassword: string): Promise<void> {
+  void _currentPassword; void _nextPassword;
   throw new Error("Troca de senha ainda indisponível no Neon. Solicite uma redefinição administrativa.");
 }
 async function token(): Promise<string> {
@@ -200,8 +201,10 @@ export async function changeStock(lotId: string, delta: number, reason: "compra"
 }
 
 export async function uploadProductPhoto(_houseId: string, _productId: string, _file: File): Promise<string> {
+  void _houseId; void _productId; void _file;
   throw new Error("Fotos indisponíveis nesta etapa da migração. Nenhum arquivo foi enviado.");
 }
 export async function signedProductPhoto(_path: string): Promise<string> {
+  void _path;
   throw new Error("Fotos aguardam armazenamento privado.");
 }
