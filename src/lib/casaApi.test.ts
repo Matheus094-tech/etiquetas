@@ -18,6 +18,7 @@ function response(body: unknown, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     text: async () => JSON.stringify(body),
+    json: async () => body,
   };
 }
 beforeEach(() => {
