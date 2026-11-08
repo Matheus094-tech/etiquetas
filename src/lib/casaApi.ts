@@ -103,13 +103,22 @@ export async function validAccessToken(): Promise<string> {
   if (!active) throw new Error("Sua sessão expirou. Entre novamente.");
   return active.access_token;
 }
-/**
- * Neon Managed Better Auth exige um fluxo verificado de redefinição.
- * Nunca atualizar neon_auth.account por SQL nem simular sucesso.
- */
-export async function changePassword(currentPassword: string, nextPassword: string): Promise<never> {
-  void currentPassword; void nextPassword;
-  throw new Error("Troca de senha temporariamente indisponível. A recuperação precisa ser configurada pelo administrador do Neon.");
+/** Altera a senha no Better Auth com validação da senha atual (sem e-mail). */
+export async function changePassword(currentPassword: string, nextPassword: string): Promise<void> {
+  if (!getSession()) throw new Error("Entre novamente na sua conta.");
+  if (nextPassword.length < 12) throw new Error("A nova senha deve ter pelo menos 12 caracteres.");
+  if (nextPassword === currentPassword) throw new Error("Escolha uma senha diferente da anterior.");
+  const authUrl = NEON_DATABASE_URL.replace(".c-2.", ".neonauth.c-2.") + "/auth";
+  const response = await fetch(authUrl + "/change-password", {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      currentPassword, newPassword: nextPassword, revokeOtherSessions: true,
+    }),
+  });
+  await parseResponse(response);
+  await initializeSession();
 }
 
 async function parseResponse<T>(response: Response): Promise<T> {
