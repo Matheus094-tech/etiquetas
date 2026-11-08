@@ -1,3 +1,23 @@
+## Migração Neon — PR #6 (08/11/2026)
+
+O frontend do PR #6 foi migrado para Neon Managed Better Auth e Neon Data API:
+- Cliente `@neon/neon-js` com sessão restaurada no React, autenticação por usuário + senha (mapeado para identidade técnica) e Bearer JWT.
+- API PostgreSQL Neon por HTTPS; `VITE_NEON_URL` está em `.env.production` porque é **endpoint público sem segredo**. Nenhuma connection string PostgreSQL ou service key foi adicionada ao GitHub.
+- As tabelas e RLS foram aplicadas no projeto Neon `dawn-hill-01046642`; banco `casa_nexo`.
+- Upload/leitura de fotos por **Netlify Functions + Netlify Blobs**, com autorização por JWT e consulta de produto via Neon Data API sujeita à RLS; limite 8 MB, JPEG/PNG/WebP e objetos privados.
+- As rotas originais de etiqueta foram preservadas, enquanto a integração Supabase antiga não é mais usada na branch.
+- Página pública temporária de provisionamento e workflows de instalação foram removidos após testes; não entram no PR final.
+
+**Bloqueios antes do merge**:
+- [ ] Duas identidades Neon criadas pela administração não possuem senha de login. O fluxo de criação administrativa não permitiu definir senha; as senhas do Supabase antigo não podem ser migradas. É preciso provisionar os dois usuários **via fluxo suportado pelo Neon Auth**, mantendo a Casa e os livros vinculados aos novos UUIDs, e testar login real.
+- [ ] Testar upload/consulta de foto end-to-end no deploy preview com JWT válido, incluindo recusa a usuário não membro.
+- [ ] Testar RLS completo com JWT real na Neon Data API, inclusive dados financeiros pessoais.
+- [ ] Validar ciclo de sessão, logout e recuperação segura de credenciais sem e-mail real.
+- [ ] Conferir implantações de Netlify Functions e quotas de Netlify Blobs.
+- [ ] Garantir CI e deploy preview verdes no commit final.
+
+**Não realizar merge** enquanto login com senha e regras de acesso não forem homologados. Este PR não contém nenhuma alteração direta na `main`.
+
 # Casa Nexo — primeira versão funcional (autenticação + estoque)
 
 ## Mudança de infraestrutura — 08/11/2026
