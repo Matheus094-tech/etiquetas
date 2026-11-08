@@ -114,6 +114,17 @@ export async function activateHouseholdAccount(input: string, code: string, pass
     if (existing.error) throw new Error("Não foi possível criar a conta. Tente novamente.");
   }
   await login(email, password);
+  // Uma ativação pode ter sido concluída no banco e a resposta perdida;
+  // repetir nesse caso deve só restaurar o alias, nunca criar outra Casa.
+  try {
+    const houses = await getHouses();
+    if (houses.length > 0) {
+      localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
+      return;
+    }
+  } catch {
+    // Se a consulta ainda não estiver pronta, a RPC segura fará a vinculação.
+  }
   try {
     const { error: claimError } = await client.rpc("claim_household_activation", {
       p_username: username, p_code: cleanCode,
