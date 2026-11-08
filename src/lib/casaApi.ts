@@ -10,6 +10,7 @@ const NEON_DATABASE_URL = (import.meta.env.VITE_NEON_DATABASE_URL ?? "").replace
 const NEON_DATA_API_URL = (import.meta.env.VITE_NEON_DATA_API_URL ?? "").replace(/\/$/, "");
 
 export const casaConfigured = Boolean(NEON_DATABASE_URL && NEON_DATA_API_URL);
+const NEON_AUTH_URL = NEON_DATABASE_URL.replace(".c-2.", ".neonauth.c-2.") + "/auth";
 const neon = casaConfigured
   ? createClient(NEON_DATABASE_URL, { auth: { adapter: BetterAuthReactAdapter() } })
   : null;
@@ -68,7 +69,20 @@ export async function initializeSession(): Promise<Session | null> {
     }
     // Better Auth guarda um token de sessão opaco, não um JWT.
     // O SDK Neon fornece o JWT separado via getJWTToken() para a Data API.
-    const token = await requireClient().auth.getJWTToken();
+    const tokenGetter = (requireClient().auth as unknown as { getJWTToken?: () => Promise<string | null> }).getJWTToken;
+    let token = typeof tokenGetter === "function" ? await tokenGetter() : null;
+    if (!token) {
+      // Better Auth emits the signed JWT through its GET /token endpoint.
+      const tokenResponse = await fetch(NEON_AUTH_URL + "/token", {
+        method: "GET", credentials: "include",
+      });
+      if (tokenResponse.ok) {
+        const value = await tokenResponse.json() as { token?: string };
+        token = value.token ?? null;
+      } else {
+        lastSessionFailure = `Neon não emitiu JWT (HTTP ${tokenResponse.status}).`;
+      }
+    }
     if (!token) {
       lastSessionFailure = "Neon Auth não retornou o JWT de acesso à API.";
       publishSession(null);
