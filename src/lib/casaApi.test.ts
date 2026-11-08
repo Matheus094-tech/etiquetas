@@ -1,94 +1,83 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 
-const authPayload = {
-  access_token: "access-test", refresh_token: "refresh-test",
-  expires_in: 3600, user: { id: "user-123", email: "morador@example.com" },
+const authMock = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  signInWithPassword: vi.fn(),
+  signOut: vi.fn(),
+}));
+vi.mock("@neon/neon-js/supabase", () => ({
+  createClient: vi.fn(() => ({ auth: authMock })),
+}));
+const fakeSession = {
+  access_token: "neon-jwt-test",
+  expires_at: Math.floor(Date.now() / 1000) + 900,
+  user: { id: "user-123", email: "matheus@users.casa-nexo.example" },
 };
-function jsonResponse(value: unknown, status = 200) {
-  return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify(value) };
+function response(body: unknown, status = 200) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    text: async () => JSON.stringify(body),
+  };
 }
 beforeEach(() => {
   vi.resetModules();
-  localStorage.clear();
-  vi.stubEnv("VITE_SUPABASE_URL", "https://projeto-teste.supabase.co");
-  vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test");
+  vi.stubEnv("VITE_NEON_URL", "https://ep-test.c-2.sa-east-1.aws.neon.tech/casa_nexo");
+  authMock.getSession.mockReset().mockResolvedValue({ data: { session: fakeSession }, error: null });
+  authMock.signInWithPassword.mockReset().mockResolvedValue({ data: { session: fakeSession }, error: null });
+  authMock.signOut.mockReset().mockResolvedValue({ error: null });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
-  localStorage.clear();
 });
-
-describe("Casa Nexo API", () => {
-  it("não cria sessão antes da confirmação por e-mail", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse({ id: "user-123" }));
-    vi.stubGlobal("fetch", fetchMock);
-    const { getSession, register } = await import("./casaApi");
-    expect(await register("morador@example.com", "senhaSegura123")).toBe(false);
+describe("Casa Nexo no Neon", () => {
+  it("restaura sessão com JWT do Neon", async () => {
+    const { getSession, restoreSession } = await import("./casaApi");
     expect(getSession()).toBeNull();
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("usa o JWT do morador ao consultar Casas", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(authPayload))
-      .mockResolvedValueOnce(jsonResponse([{ id: "casa-123", name: "Nossa Casa" }]));
-    vi.stubGlobal("fetch", fetchMock);
-    const { getSession, login, getHouses } = await import("./casaApi");
-    await login("morador@example.com", "senhaSegura123");
+    await restoreSession();
     expect(getSession()?.user.id).toBe("user-123");
-    expect((await getHouses())[0].name).toBe("Nossa Casa");
-    const request = fetchMock.mock.calls[1][1] as RequestInit;
-    const headers = request.headers as Record<string, string>;
-    expect(headers.Authorization).toBe("Bearer access-test");
-    expect(headers.apikey).toBe("sb_publishable_test");
+    expect(getSession()?.access_token).toBe("neon-jwt-test");
   });
-
-  it("recusa movimentação vazia sem chamar o servidor", async () => {
+  it("faz login usando o provedor Neon Auth", async () => {
+    const { login } = await import("./casaApi");
+    await login("matheus@users.casa-nexo.example", "senha-temporaria");
+    expect(authMock.signInWithPassword).toHaveBeenCalledWith({
+      email: "matheus@users.casa-nexo.example", password: "senha-temporaria",
+    });
+  });
+  it("usa JWT sem chave Supabase e a URL correta da Data API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response([{ id: "casa-1", name: "Nossa Casa" }]));
+    vi.stubGlobal("fetch", fetchMock);
+    const { getHouses } = await import("./casaApi");
+    expect((await getHouses())[0].name).toBe("Nossa Casa");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain(".apirest.c-2.sa-east-1.aws.neon.tech/casa_nexo/rest/v1/houses");
+    expect((options.headers as Record<string, string>).Authorization).toBe("Bearer neon-jwt-test");
+    expect((options.headers as Record<string, string>)).not.toHaveProperty("apikey");
+  });
+  it("não movimenta quantidade nula", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const { changeStock } = await import("./casaApi");
-    await expect(changeStock("lot-123", 0, "ajuste")).rejects.toThrow("Quantidade inválida");
+    await expect(changeStock("lote", 0, "ajuste")).rejects.toThrow("Quantidade inválida");
     expect(fetchMock).not.toHaveBeenCalled();
   });
-
-  it("troca a senha apenas após validar a senha atual", async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(authPayload))
-      .mockResolvedValueOnce(jsonResponse(authPayload))
-      .mockResolvedValueOnce(jsonResponse({ id: "user-123" }));
-    vi.stubGlobal("fetch", fetchMock);
-    const { login, changePassword } = await import("./casaApi");
-    await login("morador@example.com", "senhaAtual123!");
-    await changePassword("senhaAtual123!", "novaSenhaLonga123!@#");
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    const updateOptions = fetchMock.mock.calls[2][1] as RequestInit;
-    expect(updateOptions.method).toBe("PUT");
-    expect(fetchMock.mock.calls[2][0]).toContain("/auth/v1/user");
-    expect(JSON.parse(updateOptions.body as string)).toEqual({
-      password: "novaSenhaLonga123!@#", current_password: "senhaAtual123!",
-    });
-    expect(localStorage.getItem("casa-nexo-auth-session-v1")).not.toContain("novaSenhaLonga123!@#");
+  it("falha de forma segura ao tentar enviar fotos sem storage", async () => {
+    const { uploadProductPhoto, signedProductPhoto } = await import("./casaApi");
+    await expect(uploadProductPhoto("house", "product", new File(["x"], "x.jpg", { type: "image/jpeg" })))
+      .rejects.toThrow("Fotos indisponíveis");
+    await expect(signedProductPhoto("path")).rejects.toThrow("aguardam armazenamento");
   });
-
-  it("recusa troca de senha curta ou igual à anterior sem chamar o servidor", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(authPayload));
-    vi.stubGlobal("fetch", fetchMock);
-    const { login, changePassword } = await import("./casaApi");
-    await login("morador@example.com", "senhaAtual123!");
-    await expect(changePassword("senhaAtual123!", "curta")).rejects.toThrow("pelo menos 12");
-    await expect(changePassword("senhaAtual123!", "senhaAtual123!")).rejects.toThrow("diferente");
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+  it("desativa a troca de senha legada até haver endpoint seguro", async () => {
+    const { changePassword } = await import("./casaApi");
+    await expect(changePassword("senha-antiga", "senha-nova")).rejects.toThrow("indisponível");
   });
-
-  it("encerra a sessão local ao sair, mesmo se o servidor falhar", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(jsonResponse(authPayload))
-      .mockRejectedValueOnce(new Error("offline"));
-    vi.stubGlobal("fetch", fetchMock);
-    const { login, logout, getSession } = await import("./casaApi");
-    await login("morador@example.com", "senhaSegura123");
+  it("não mantém sessão após logout", async () => {
+    const { getSession, login, logout } = await import("./casaApi");
+    await login("matheus@users.casa-nexo.example", "senha");
+    expect(getSession()).not.toBeNull();
     await logout();
     expect(getSession()).toBeNull();
-    expect(localStorage.getItem("casa-nexo-auth-session-v1")).toBeNull();
   });
 });
