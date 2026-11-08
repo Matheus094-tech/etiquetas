@@ -71,9 +71,35 @@ describe("Neon Casa Nexo API", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("não simula sucesso de troca de senha não suportada", async () => {
-    const { changePassword } = await import("./casaApi");
-    await expect(changePassword("anterior", "posterior1234")).rejects.toThrow("temporariamente indisponível");
+  it("altera a senha pelo Better Auth somente com sessão autenticada e senha atual", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(response({ success: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { login, changePassword } = await import("./casaApi");
+    await login("morador@example.com", "SenhaAtual123!");
+    await changePassword("SenhaAtual123!", "NovaSenhaSegura456!");
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain(".neonauth.");
+    expect(url).toContain("/auth/change-password");
+    expect(options.method).toBe("POST");
+    expect(options.credentials).toBe("include");
+    expect(JSON.parse(options.body as string)).toEqual({
+      currentPassword: "SenhaAtual123!",
+      newPassword: "NovaSenhaSegura456!",
+      revokeOtherSessions: true,
+    });
+    expect(localStorage.getItem("casa-nexo-auth-session-v1")).toBeNull();
+  });
+
+  it("recusa alteração de senha sem sessão ou com senha fraca", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const { changePassword, login } = await import("./casaApi");
+    await expect(changePassword("antiga", "NovaSenhaSegura456!")).rejects.toThrow("Entre novamente");
+    await login("morador@example.com", "SenhaAtual123!");
+    await expect(changePassword("SenhaAtual123!", "curta")).rejects.toThrow("12 caracteres");
+    await expect(changePassword("SenhaAtual123!", "SenhaAtual123!")).rejects.toThrow("diferente");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("encerra sessão por Neon Auth e limpa o estado em memória", async () => {
