@@ -122,6 +122,9 @@ describe("Casa Nexo no Neon", () => {
   });
 
   it("registra a senha no Neon e vincula a Casa somente após confirmação pelo banco", async () => {
+    databaseMock.from.mockImplementationOnce(() => ({
+      select: vi.fn(() => ({ order: vi.fn().mockResolvedValue({ data: [], error: null }) })),
+    }));
     const digest = new Uint8Array(32).fill(0xab);
     vi.stubGlobal("crypto", { subtle: { digest: vi.fn().mockResolvedValue(digest.buffer) } });
 
@@ -138,6 +141,16 @@ describe("Casa Nexo no Neon", () => {
       .toBe("matheus.setup.abababababababababababab@users.casa-nexo.example");
     expect(JSON.stringify(localStorage)).not.toContain("SenhaLongaPrivada123!");
     expect(JSON.stringify(localStorage)).not.toContain("codigo-ficticio");
+  });
+  it("retoma ativação já vinculada sem criar uma segunda Casa", async () => {
+    const digest = new Uint8Array(32).fill(0xab);
+    vi.stubGlobal("crypto", { subtle: { digest: vi.fn().mockResolvedValue(digest.buffer) } });
+    const { activateHouseholdAccount } = await import("./casaApi");
+    await activateHouseholdAccount("matheus", "codigo-ficticio", "SenhaLongaPrivada123!");
+    expect(databaseMock.from).toHaveBeenCalledWith("houses");
+    expect(databaseMock.rpc).not.toHaveBeenCalled();
+    expect(localStorage.getItem("casa-nexo-neon-identity-v1-matheus"))
+      .toBe("matheus.setup.abababababababababababab@users.casa-nexo.example");
   });
   it("não mantém sessão após logout", async () => {
     const { getSession, login, logout } = await import("./casaApi");
