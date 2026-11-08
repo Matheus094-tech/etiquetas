@@ -1,0 +1,32 @@
+name: Install Neon SDK and lockfile (migration only)
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  lockfile:
+    if: github.head_ref == 'feat/casa-neon-migration'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/casa-neon-migration
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Neon SDK
+        run: npm install @neon/neon-js --save
+      - name: Commit lockfile to migration branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json
+          git diff --cached --quiet || git commit -m "build: install Neon JS SDK with lockfile"
+          git push origin HEAD:feat/casa-neon-migration
+      - name: Check
+        run: |
+          npm run lint
+          npm run test
+          npm run build
