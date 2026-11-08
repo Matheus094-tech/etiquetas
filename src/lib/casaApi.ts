@@ -66,9 +66,11 @@ export async function initializeSession(): Promise<Session | null> {
       publishSession(null);
       return null;
     }
-    const token = (data.session as unknown as { access_token?: string }).access_token;
+    // Better Auth guarda um token de sessão opaco, não um JWT.
+    // O SDK Neon fornece o JWT separado via getJWTToken() para a Data API.
+    const token = await requireClient().auth.getJWTToken();
     if (!token) {
-      lastSessionFailure = `A sessão retornou sem JWT (campos: ${Object.keys(data.session).filter((key) => !/token|secret|key/i.test(key)).join(", ") || "nenhum público"}).`;
+      lastSessionFailure = "Neon Auth não retornou o JWT de acesso à API.";
       publishSession(null);
       return null;
     }
