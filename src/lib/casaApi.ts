@@ -32,6 +32,7 @@ export type StockLot = {
 export type InventoryItem = Product & { lots: StockLot[]; total: number };
 
 let session: Session | null = null;
+let lastSessionFailure = "";
 const listeners = new Set<(value: Session | null) => void>();
 export function getSession(): Session | null { return session; }
 export function onSessionChange(listener: (value: Session | null) => void) {
@@ -61,18 +62,25 @@ export async function initializeSession(): Promise<Session | null> {
   try {
     const { data, error } = await requireClient().auth.getSession();
     if (error || !data?.user || !data.session) {
+      lastSessionFailure = error?.message || `Sessão incompleta (usuário: ${Boolean(data?.user)}, sessão: ${Boolean(data?.session)}).`;
       publishSession(null);
       return null;
     }
     const token = (data.session as unknown as { access_token?: string }).access_token;
-    if (!token) { publishSession(null); return null; }
+    if (!token) {
+      lastSessionFailure = `A sessão retornou sem JWT (campos: ${Object.keys(data.session).filter((key) => !/token|secret|key/i.test(key)).join(", ") || "nenhum público"}).`;
+      publishSession(null);
+      return null;
+    }
     const next: Session = {
       access_token: token,
       user: { id: data.user.id, email: data.user.email },
     };
+    lastSessionFailure = "";
     publishSession(next);
     return next;
-  } catch {
+  } catch (reason) {
+    lastSessionFailure = reason instanceof Error ? reason.message : "Falha ao validar sessão.";
     publishSession(null);
     return null;
   }
@@ -81,7 +89,7 @@ export async function login(email: string, password: string): Promise<void> {
   const { error } = await requireClient().auth.signIn.email({ email, password });
   if (error) throw unwrapError(error, "Usuário ou senha incorretos.");
   const active = await initializeSession();
-  if (!active) throw new Error("Não foi possível estabelecer a sessão. Entre novamente.");
+  if (!active) throw new Error(lastSessionFailure || "Não foi possível estabelecer a sessão. Entre novamente.");
 }
 export async function logout() {
   try {
