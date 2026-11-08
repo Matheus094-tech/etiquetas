@@ -3,17 +3,13 @@
  * Nenhuma credencial PostgreSQL, chave administrativa ou senha fica no navegador.
  * Tokens são geridos pelo SDK Neon. A Data API usa JWT + RLS.
  */
-import { createClient } from "@neon/neon-js";
-import { BetterAuthReactAdapter } from "@neon/neon-js/auth/react/adapters";
+import { createClient } from "@neon/neon-js/supabase";
 
 const NEON_DATABASE_URL = (import.meta.env.VITE_NEON_DATABASE_URL ?? "").replace(/\/$/, "");
 const NEON_DATA_API_URL = (import.meta.env.VITE_NEON_DATA_API_URL ?? "").replace(/\/$/, "");
 
 export const casaConfigured = Boolean(NEON_DATABASE_URL && NEON_DATA_API_URL);
-const NEON_AUTH_URL = NEON_DATABASE_URL.replace(".c-2.", ".neonauth.c-2.") + "/auth";
-const neon = casaConfigured
-  ? createClient(NEON_DATABASE_URL, { auth: { adapter: BetterAuthReactAdapter() } })
-  : null;
+const neon = casaConfigured ? createClient(NEON_DATABASE_URL) : null;
 
 export type Session = {
   access_token: string;
@@ -62,35 +58,22 @@ export async function initializeSession(): Promise<Session | null> {
   if (!casaConfigured) { publishSession(null); return null; }
   try {
     const { data, error } = await requireClient().auth.getSession();
-    if (error || !data?.user || !data.session) {
-      lastSessionFailure = error?.message || `Sessão incompleta (usuário: ${Boolean(data?.user)}, sessão: ${Boolean(data?.session)}).`;
+    const authSession = data?.session;
+    if (error || !authSession?.user) {
+      lastSessionFailure = error?.message || "Neon não encontrou sessão autenticada.";
       publishSession(null);
       return null;
     }
-    // Better Auth guarda um token de sessão opaco, não um JWT.
-    // O SDK Neon fornece o JWT separado via getJWTToken() para a Data API.
-    const tokenGetter = (requireClient().auth as unknown as { getJWTToken?: () => Promise<string | null> }).getJWTToken;
-    let token = typeof tokenGetter === "function" ? await tokenGetter() : null;
+    // O adaptador Supabase oficial converte a sessão Better Auth para JWT.
+    const token = authSession.access_token;
     if (!token) {
-      // Better Auth emits the signed JWT through its GET /token endpoint.
-      const tokenResponse = await fetch(NEON_AUTH_URL + "/token", {
-        method: "GET", credentials: "include",
-      });
-      if (tokenResponse.ok) {
-        const value = await tokenResponse.json() as { token?: string };
-        token = value.token ?? null;
-      } else {
-        lastSessionFailure = `Neon não emitiu JWT (HTTP ${tokenResponse.status}).`;
-      }
-    }
-    if (!token) {
-      lastSessionFailure = "Neon Auth não retornou o JWT de acesso à API.";
+      lastSessionFailure = "Neon Auth retornou sessão sem JWT de acesso.";
       publishSession(null);
       return null;
     }
     const next: Session = {
       access_token: token,
-      user: { id: data.user.id, email: data.user.email },
+      user: { id: authSession.user.id, email: authSession.user.email },
     };
     lastSessionFailure = "";
     publishSession(next);
@@ -102,7 +85,7 @@ export async function initializeSession(): Promise<Session | null> {
   }
 }
 export async function login(email: string, password: string): Promise<void> {
-  const { error } = await requireClient().auth.signIn.email({ email, password });
+  const { error } = await requireClient().auth.signInWithPassword({ email, password });
   if (error) throw unwrapError(error, "Usuário ou senha incorretos.");
   const active = await initializeSession();
   if (!active) throw new Error(lastSessionFailure || "Não foi possível estabelecer a sessão. Entre novamente.");
