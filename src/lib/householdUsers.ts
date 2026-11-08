@@ -1,12 +1,12 @@
 /**
  * Login simplificado do Casa Nexo.
  *
- * Supabase Auth exige um identificador de e-mail ou telefone para senha.
+ * Neon Auth usa um identificador técnico de e-mail para autenticar com senha.
  * Os endereços abaixo são identificadores técnicos RESERVADOS (domínio .example),
  * sem caixa de e-mail e sem possibilidade de recuperação automática.
  * Nunca armazenar senhas neste arquivo nem no frontend.
  *
- * Contas são provisionadas pelo administrador via Supabase Auth.
+ * As contas ativas são criadas pelo morador com código único e Neon Auth.
  */
 export const HOUSEHOLD_USERNAMES = ["matheus", "stephany"] as const;
 export type HouseholdUsername = (typeof HOUSEHOLD_USERNAMES)[number];
@@ -30,6 +30,23 @@ export function emailForUsername(value: string): string {
 
 export function displayUsername(email?: string): string {
   if (!email) return "Morador";
-  const match = HOUSEHOLD_USERNAMES.find((username) => IDENTITIES[username] === email.toLowerCase());
+  const match = HOUSEHOLD_USERNAMES.find((username) =>
+    IDENTITIES[username] === email.toLowerCase() ||
+    email.toLowerCase().startsWith(`${username}.setup.`) ||
+    email.toLowerCase().startsWith(`${username}.login@`));
   return match ? match.charAt(0).toUpperCase() + match.slice(1) : "Morador";
+}
+
+/** Alias técnico não adivinhável antes da ativação: o código aleatório
+ * fica fora do código-fonte e só seu SHA-256 parcial aparece no alias.
+ */
+export async function activationEmail(value: string, code: string): Promise<string> {
+  const username = normalizeHouseholdUsername(value);
+  if (!HOUSEHOLD_USERNAMES.includes(username as HouseholdUsername)) {
+    throw new Error("Morador inválido.");
+  }
+  const data = new TextEncoder().encode(code.trim());
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  const hex = Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${username}.setup.${hex.slice(0, 24)}@users.casa-nexo.example`;
 }
