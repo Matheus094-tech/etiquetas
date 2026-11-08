@@ -70,7 +70,7 @@ export function ActivatePage() {
               placeholder="Mínimo de 8 caracteres" />
           </label>
           <label>Confirme sua senha
-            <input type="password" minLength={12} maxLength={128} required
+            <input type="password" minLength={8} maxLength={128} required
               autoComplete="new-password" value={confirmation}
               onChange={(event) => setConfirmation(event.target.value)} />
           </label>
