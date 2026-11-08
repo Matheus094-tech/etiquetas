@@ -2,6 +2,7 @@
  *  Usa somente a URL HTTPS pública; NUNCA inclua a connection string PostgreSQL no Vite.
  */
 import { createClient } from "@neon/neon-js/supabase";
+import { activationEmail, normalizeHouseholdUsername } from "./householdUsers";
 
 export const NEON_URL = (import.meta.env.VITE_NEON_URL ?? "").replace(/\/$/, "");
 export const casaConfigured = Boolean(NEON_URL);
@@ -41,10 +42,10 @@ function setSession(next: Session | null) {
   session = next;
   for (const callback of listeners) callback(next);
 }
-function fromAuthSession(raw: unknown): Session | null {
+function fromAuthSession(raw: unknown, userOverride?: unknown): Session | null {
   if (!raw || typeof raw !== "object") return null;
   const s = raw as Record<string, unknown>;
-  const u = s.user as Record<string, unknown> | undefined;
+  const u = (userOverride ?? s.user) as Record<string, unknown> | undefined;
   if (!u?.id || typeof u.id !== "string") return null;
   const accessToken = s.access_token;
   if (typeof accessToken !== "string" || !accessToken) return null;
@@ -59,7 +60,7 @@ export async function restoreSession() {
   try {
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
-    setSession(fromAuthSession(data.session));
+    setSession(fromAuthSession(data.session, data.user));
   } catch {
     setSession(null);
   }
@@ -67,12 +68,76 @@ export async function restoreSession() {
 export async function login(email: string, password: string) {
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
-  const logged = fromAuthSession(data.session);
+  const logged = fromAuthSession(data.session, data.user);
   if (!logged) {
     await restoreSession();
     if (!session) throw new Error("Não foi possível obter sessão do Neon.");
   } else setSession(logged);
 }
+/**
+ * Uma RPC com privilégios restritos resolve o alias de login somente depois
+ * de a conta ter reivindicado um código de ativação válido.
+ * Nenhuma senha ou código é armazenado no frontend.
+ */
+async function anonymousRpc<T>(name: string, body: Record<string, string>): Promise<T> {
+  const response = await fetch(`${DATA_URL}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error("Não foi possível consultar a ativação. Tente novamente.");
+  }
+  return response.json() as Promise<T>;
+}
+
+export async function lookupHouseholdEmail(input: string): Promise<string> {
+  const username = normalizeHouseholdUsername(input);
+  const value = await anonymousRpc<string | null>("household_login_email", {
+    p_username: username,
+  });
+  if (typeof value !== "string" || !value.includes("@")) {
+    throw new Error("Esta conta ainda não foi ativada.");
+  }
+  return value;
+}
+
+export async function activateHouseholdAccount(input: string, code: string, password: string) {
+  const username = normalizeHouseholdUsername(input);
+  if (!["matheus", "stephany"].includes(username)) throw new Error("Morador inválido.");
+  if (password.length < 12) throw new Error("Use uma senha com pelo menos 12 caracteres.");
+  const cleanCode = code.trim();
+  if (!cleanCode || cleanCode.length > 128) throw new Error("Código de ativação inválido.");
+  const eligible = await anonymousRpc<boolean>("check_household_activation", {
+    p_username: username, p_code: cleanCode,
+  });
+  if (eligible !== true) throw new Error("Código inválido, expirado ou já utilizado.");
+
+  const email = await activationEmail(username, cleanCode);
+  // A senha é enviada somente ao Neon Auth, nunca à nossa API própria.
+  const { error } = await client.auth.signUp({
+    email,
+    password,
+    options: { data: { name: username === "matheus" ? "Matheus" : "Stephany" } },
+  });
+  if (error) {
+    // Caso a conta tenha sido criada, mas a associação falhou por rede,
+    // o morador pode repetir com a mesma senha e concluir a ativação.
+    const existing = await client.auth.signInWithPassword({ email, password });
+    if (existing.error) throw new Error("Não foi possível criar a conta. Tente novamente.");
+  }
+  await login(email, password);
+  try {
+    await apiRequest<string>("POST", "rpc/claim_household_activation", {
+      p_username: username, p_code: cleanCode,
+    });
+  } catch (reason) {
+    throw new Error(reason instanceof Error
+      ? `Conta criada, mas não vinculada à Casa: ${reason.message}. Repita o procedimento com a mesma senha.`
+      : "Conta criada, mas não vinculada à Casa. Repita com a mesma senha.");
+  }
+}
+
 export async function logout() {
   try { await client.auth.signOut(); }
   finally { setSession(null); }
@@ -87,7 +152,7 @@ export async function changePassword(_currentPassword: string, _nextPassword: st
 async function token(): Promise<string> {
   const { data, error } = await client.auth.getSession();
   if (error || !data.session) { setSession(null); throw new Error("Sua sessão expirou. Entre novamente."); }
-  const next = fromAuthSession(data.session);
+  const next = fromAuthSession(data.session, data.user);
   if (!next) throw new Error("Sessão sem token de autorização.");
   setSession(next);
   return next.access_token;
