@@ -3,7 +3,7 @@
 A branch do PR #6 agora tem uma rota pública `/ativar` para que Matheus e Stephany **escolham a própria senha sem enviá-la pelo chat**.
 
 - O administrador gera dois códigos aleatórios de uso único e insere **somente SHA-256** no banco Neon, em `private.household_activation`. Os códigos brutos **nunca são commitados** nem armazenados no frontend.
-- O morador seleciona o nome, digita o código, escolhe e confirma senha de pelo menos 12 caracteres.
+- O morador seleciona o nome, digita o código, escolhe e confirma senha de pelo menos 8 caracteres.
 - O navegador deriva um e-mail técnico não adivinhável a partir do SHA-256 do código e registra a conta no **Neon Auth oficial**.
 - O primeiro login gera um JWT; somente então o banco confere código, usuário autenticado e identificador técnico, vincula a conta à Casa e cria seu livro financeiro pessoal.
 - Os quatro usuários legados de testes ficam com `house_members.active=false` (migration 004), preservando os registros mas revogando acesso à Casa. As novas contas entram com `active=true`.
