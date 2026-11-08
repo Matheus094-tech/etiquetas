@@ -1,21 +1,22 @@
-/** Casa Nexo API: acesso ao Supabase via REST, sem credenciais de servidor no cliente. */
-export const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "");
-const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-  || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-export const casaConfigured = Boolean(SUPABASE_URL && API_KEY);
-const SESSION_KEY = "casa-nexo-auth-session-v1";
+/**
+ * Casa Nexo: Neon Managed Better Auth + Neon Data API.
+ * Nenhuma credencial PostgreSQL, chave administrativa ou senha fica no navegador.
+ * Tokens são geridos pelo SDK Neon. A Data API usa JWT + RLS.
+ */
+import { createClient } from "@neon/neon-js";
+
+const NEON_DATABASE_URL = (import.meta.env.VITE_NEON_DATABASE_URL ?? "").replace(/\/$/, "");
+const NEON_DATA_API_URL = (import.meta.env.VITE_NEON_DATA_API_URL ?? "").replace(/\/$/, "");
+
+export const casaConfigured = Boolean(NEON_DATABASE_URL && NEON_DATA_API_URL);
+const neon = casaConfigured ? createClient(NEON_DATABASE_URL) : null;
 
 export type Session = {
   access_token: string;
-  refresh_token: string;
-  expires_at: number;
   user: { id: string; email?: string };
 };
-
 export type House = { id: string; name: string; created_at: string };
-export type Location = {
-  id: string; house_id: string; name: string; kind: string; parent_id: string | null;
-};
+export type Location = { id: string; house_id: string; name: string; kind: string; parent_id: string | null };
 export type Product = {
   id: string; house_id: string; name: string; brand: string | null;
   category: string | null; barcode: string | null; package_description: string | null;
@@ -27,171 +28,116 @@ export type StockLot = {
 };
 export type InventoryItem = Product & { lots: StockLot[]; total: number };
 
-function readSession(): Session | null {
-  try {
-    const value = localStorage.getItem(SESSION_KEY);
-    if (!value) return null;
-    const parsed = JSON.parse(value) as Session;
-    return parsed.access_token && parsed.refresh_token && parsed.user?.id ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-let session: Session | null = typeof window === "undefined" ? null : readSession();
-const listeners = new Set<(current: Session | null) => void>();
-export function getSession() { return session; }
-export function onSessionChange(listener: (current: Session | null) => void) {
+let session: Session | null = null;
+const listeners = new Set<(value: Session | null) => void>();
+export function getSession(): Session | null { return session; }
+export function onSessionChange(listener: (value: Session | null) => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };
 }
-function saveSession(next: Session | null) {
-  session = next;
-  if (next) localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-  else localStorage.removeItem(SESSION_KEY);
-  listeners.forEach((listener) => listener(next));
+function publishSession(value: Session | null) {
+  session = value;
+  listeners.forEach((listener) => listener(value));
 }
-function fromAuthResponse(raw: {
-  access_token: string; refresh_token: string; expires_in: number;
-  user: { id: string; email?: string };
-}): Session {
-  return {
-    access_token: raw.access_token,
-    refresh_token: raw.refresh_token,
-    expires_at: Date.now() + raw.expires_in * 1000,
-    user: raw.user,
-  };
+function requireClient() {
+  if (!neon) throw new Error("Banco Neon não configurado neste ambiente.");
+  return neon;
 }
+function unwrapError(error: unknown, fallback: string): Error {
+  if (error instanceof Error) return error;
+  if (error && typeof error === "object" && "message" in error) {
+    const message = (error as { message: unknown }).message;
+    if (typeof message === "string") return new Error(message);
+  }
+  return new Error(fallback);
+}
+
+/** Revalida a sessão com Neon; a biblioteca renova o token automaticamente. */
+export async function initializeSession(): Promise<Session | null> {
+  if (!casaConfigured) { publishSession(null); return null; }
+  try {
+    const { data, error } = await requireClient().auth.getSession();
+    if (error || !data?.user || !data.session) {
+      publishSession(null);
+      return null;
+    }
+    const token = (data.session as unknown as { access_token?: string }).access_token;
+    if (!token) { publishSession(null); return null; }
+    const next: Session = {
+      access_token: token,
+      user: { id: data.user.id, email: data.user.email },
+    };
+    publishSession(next);
+    return next;
+  } catch {
+    publishSession(null);
+    return null;
+  }
+}
+export async function login(email: string, password: string): Promise<void> {
+  const { error } = await requireClient().auth.signIn.email({ email, password });
+  if (error) throw unwrapError(error, "Usuário ou senha incorretos.");
+  const active = await initializeSession();
+  if (!active) throw new Error("Não foi possível estabelecer a sessão. Entre novamente.");
+}
+export async function logout() {
+  try {
+    if (neon) await neon.auth.signOut();
+  } finally {
+    publishSession(null);
+  }
+}
+export async function validAccessToken(): Promise<string> {
+  // Não confiar num JWT persistido por nosso código. O Neon SDK gerencia sessão/refresh.
+  const active = await initializeSession();
+  if (!active) throw new Error("Sua sessão expirou. Entre novamente.");
+  return active.access_token;
+}
+/**
+ * Neon Managed Better Auth exige um fluxo verificado de redefinição.
+ * Nunca atualizar neon_auth.account por SQL nem simular sucesso.
+ */
+export async function changePassword(_currentPassword: string, _nextPassword: string): Promise<never> {
+  throw new Error("Troca de senha temporariamente indisponível. A recuperação precisa ser configurada pelo administrador do Neon.");
+}
+
 async function parseResponse<T>(response: Response): Promise<T> {
-  const body = await response.text();
-  let result: unknown = null;
-  try { result = body ? JSON.parse(body) : null; } catch { result = body; }
+  const raw = await response.text();
+  let result: unknown;
+  try { result = raw ? JSON.parse(raw) : null; } catch { result = raw; }
   if (!response.ok) {
-    const detail = result && typeof result === "object"
-      ? result as Record<string, unknown> : {};
-    const reason = detail.msg || detail.message || detail.error_description || detail.error;
-    throw new Error(typeof reason === "string" ? reason : `Erro HTTP ${response.status}`);
+    const object = result && typeof result === "object" ? result as Record<string, unknown> : {};
+    const message = object.message ?? object.error ?? object.details;
+    throw new Error(typeof message === "string" ? message : `Erro HTTP ${response.status}`);
   }
   return result as T;
 }
-async function authRequest<T>(path: string, data: unknown, token?: string): Promise<T> {
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
-    method: "POST",
-    headers: {
-      apikey: API_KEY,
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  return parseResponse<T>(response);
-}
-type AuthPayload = {
-  access_token: string; refresh_token: string; expires_in: number;
-  user: { id: string; email?: string };
-};
-export async function login(email: string, password: string) {
-  const result = await authRequest<AuthPayload>(
-    "token?grant_type=password", { email, password }
-  );
-  saveSession(fromAuthResponse(result));
-}
-export async function register(email: string, password: string) {
-  const result = await authRequest<Partial<AuthPayload>>("signup", { email, password });
-  if (result.access_token && result.refresh_token && result.expires_in && result.user) {
-    saveSession(fromAuthResponse(result as AuthPayload));
-    return true;
-  }
-  return false; // Confirmação de e-mail exigida no projeto Supabase.
-}
-let refreshPromise: Promise<void> | null = null;
-async function refreshSession() {
-  if (!session) throw new Error("Entre na sua conta.");
-  if (!refreshPromise) {
-    const refreshToken = session.refresh_token;
-    refreshPromise = (async () => {
-      try {
-        const result = await authRequest<AuthPayload>(
-          "token?grant_type=refresh_token", { refresh_token: refreshToken }
-        );
-        saveSession(fromAuthResponse(result));
-      } catch {
-        saveSession(null);
-        throw new Error("Sua sessão expirou. Entre novamente.");
-      }
-    })().finally(() => { refreshPromise = null; });
-  }
-  await refreshPromise;
-}
-export async function validAccessToken(): Promise<string> {
-  if (!session) throw new Error("Entre na sua conta.");
-  if (session.expires_at <= Date.now() + 60_000) await refreshSession();
-  if (!session) throw new Error("Sua sessão expirou.");
-  return session.access_token;
-}
-/** Troca a senha da conta autenticada, sem usar e-mail de recuperação. */
-export async function changePassword(currentPassword: string, nextPassword: string) {
-  const current = getSession();
-  if (!current?.user.email) throw new Error("Entre novamente na sua conta.");
-  if (nextPassword.length < 12) throw new Error("A nova senha deve ter pelo menos 12 caracteres.");
-  if (nextPassword === currentPassword) throw new Error("Escolha uma senha diferente da anterior.");
-
-  // Verifica a senha atual na API de autenticação antes de permitir a troca.
-  const verified = await authRequest<AuthPayload>(
-    "token?grant_type=password",
-    { email: current.user.email, password: currentPassword },
-  );
-  if (verified.user.id !== current.user.id) {
-    throw new Error("Falha ao validar a identidade da conta.");
-  }
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    method: "PUT",
-    headers: {
-      apikey: API_KEY,
-      Authorization: `Bearer ${await validAccessToken()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ password: nextPassword, current_password: currentPassword }),
-  });
-  await parseResponse(response);
-}
-
-export async function logout() {
-  const token = session?.access_token;
-  saveSession(null);
-  if (token) {
-    try { await authRequest("logout", {}, token); } catch { /* sessão local já removida */ }
-  }
-}
 export async function apiRequest<T>(
   method: "GET" | "POST" | "PATCH" | "DELETE",
-  path: string,
-  body?: unknown
+  path: string, body?: unknown,
 ): Promise<T> {
   const token = await validAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const response = await fetch(`${NEON_DATA_API_URL}/${path}`, {
     method,
     headers: {
-      apikey: API_KEY,
       Authorization: `Bearer ${token}`,
       ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
       Prefer: "return=representation",
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  if (response.status === 401) saveSession(null);
+  if (response.status === 401) publishSession(null);
   return parseResponse<T>(response);
 }
-function params(values: Record<string, string>) {
-  return new URLSearchParams(values).toString();
-}
+function params(values: Record<string, string>) { return new URLSearchParams(values).toString(); }
+
 export async function getHouses() {
   return apiRequest<House[]>("GET", "houses?" + params({
     select: "id,name,created_at", order: "created_at.asc",
   }));
 }
 export async function createHouse(name: string) {
-  const user = getSession()?.user;
+  const user = (await initializeSession())?.user;
   if (!user) throw new Error("Entre na sua conta.");
   const rows = await apiRequest<House[]>("POST", "houses", {
     name: name.trim(), created_by: user.id,
@@ -227,10 +173,10 @@ export async function getInventory(houseId: string): Promise<InventoryItem[]> {
       house_id: `eq.${houseId}`,
     })),
   ]);
-  return products.map((p) => {
-    const productLots = lots.filter((lot) => lot.product_id === p.id);
+  return products.map((product) => {
+    const productLots = lots.filter((lot) => lot.product_id === product.id);
     return {
-      ...p, lots: productLots,
+      ...product, lots: productLots,
       total: productLots.reduce((sum, lot) => sum + Number(lot.quantity), 0),
     };
   });
@@ -241,11 +187,12 @@ export async function createProduct(data: {
   locationId: string | null; expiresOn: string | null;
 }): Promise<{ product: Product; lot: StockLot }> {
   const products = await apiRequest<Product[]>("POST", "products", {
-    house_id: data.houseId, name: data.name.trim(), brand: data.brand.trim() || null,
+    house_id: data.houseId,
+    name: data.name.trim(), brand: data.brand.trim() || null,
     category: data.category.trim() || null,
     package_description: data.packageDescription.trim() || null,
     reorder_at: data.reorderAt,
-    created_by: getSession()?.user.id,
+    created_by: (await initializeSession())?.user.id,
   });
   const product = products[0];
   if (!product) throw new Error("Produto não cadastrado.");
@@ -261,64 +208,63 @@ export async function createProduct(data: {
   }
   return { product, lot };
 }
-export async function changeStock(lotId: string, delta: number, reason: "compra" | "consumo" | "ajuste" | "descarte") {
+export async function changeStock(
+  lotId: string, delta: number, reason: "compra" | "consumo" | "ajuste" | "descarte",
+) {
   if (!Number.isFinite(delta) || delta === 0) throw new Error("Quantidade inválida.");
   return apiRequest<number>("POST", "rpc/change_stock", {
     p_lot_id: lotId, p_delta: delta, p_reason: reason,
   });
 }
-const BUCKET = "household-media";
-function objectPath(path: string) {
-  return path.split("/").map(encodeURIComponent).join("/");
-}
-export async function uploadProductPhoto(houseId: string, productId: string, file: File) {
+
+function validatePhoto(file: File) {
   const formats: Record<string, string> = {
-    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
+    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
   };
   const extension = formats[file.type];
-  if (!extension) throw new Error("Use uma fotografia JPG, PNG ou WebP (HEIC suportado quando aceito pelo navegador).");
-  if (file.size > 8 * 1024 * 1024) throw new Error("A foto deve ter até 8 MB.");
+  if (!extension) throw new Error("Envie uma foto JPG, PNG ou WebP.");
+  if (file.size > 4 * 1024 * 1024) throw new Error("Reduza a fotografia para até 4 MB.");
+  return extension;
+}
+
+/**
+ * Netlify Blobs: a Function verifica JWT Neon e membership via RLS antes de
+ * acessar o blob. NUNCA publica imagens diretamente no CDN.
+ */
+export async function uploadProductPhoto(houseId: string, productId: string, file: File) {
+  const extension = validatePhoto(file);
   const path = `${houseId}/products/${productId}-${crypto.randomUUID()}.${extension}`;
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${objectPath(path)}`, {
-    method: "POST",
-    headers: {
-      apikey: API_KEY,
-      Authorization: `Bearer ${await validAccessToken()}`,
-      "Content-Type": file.type,
-      "x-upsert": "false",
+  const response = await fetch(
+    `/.netlify/functions/house-photo?houseId=${encodeURIComponent(houseId)}&productId=${encodeURIComponent(productId)}&path=${encodeURIComponent(path)}`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${await validAccessToken()}`,
+        "Content-Type": file.type,
+      },
+      body: file,
     },
-    body: file,
-  });
+  );
   await parseResponse(response);
   try {
-    await apiRequest("PATCH", "products?" + params({ id: `eq.${productId}`, house_id: `eq.${houseId}` }), {
-      photo_path: path,
-    });
+    await apiRequest("PATCH", "products?" + params({
+      id: `eq.${productId}`, house_id: `eq.${houseId}`,
+    }), { photo_path: path });
   } catch (error) {
-    // Remover um upload órfão em caso de falha ao associar produto.
-    await deleteProductPhoto(path).catch(() => {});
+    await fetch("/.netlify/functions/house-photo?" + params({ houseId, productId, path }), {
+      method: "DELETE", headers: { Authorization: `Bearer ${await validAccessToken()}` },
+    }).catch(() => {});
     throw error;
   }
   return path;
 }
-async function deleteProductPhoto(path: string) {
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${objectPath(path)}`, {
-    method: "DELETE",
-    headers: { apikey: API_KEY, Authorization: `Bearer ${await validAccessToken()}` },
-  });
-  await parseResponse(response);
-}
-export async function signedProductPhoto(path: string) {
-  const token = await validAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${objectPath(path)}`, {
-    method: "POST",
-    headers: {
-      apikey: API_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ expiresIn: 600 }),
-  });
-  const data = await parseResponse<{ signedURL: string }>(response);
-  return new URL(data.signedURL.startsWith("/storage/v1/")
-    ? data.signedURL
-    : `/storage/v1${data.signedURL}`, SUPABASE_URL).toString();
+/** Retorna object URL temporária; o hook revoga URLs antigas. */
+export async function signedProductPhoto(path: string): Promise<string> {
+  const response = await fetch(
+    `/.netlify/functions/house-photo?path=${encodeURIComponent(path)}`,
+    { headers: { Authorization: `Bearer ${await validAccessToken()}` } },
+  );
+  if (!response.ok) await parseResponse(response);
+  const image = await response.blob();
+  return URL.createObjectURL(image);
 }
