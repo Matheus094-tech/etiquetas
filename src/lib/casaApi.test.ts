@@ -63,11 +63,19 @@ describe("Casa Nexo no Neon", () => {
     await expect(changeStock("lote", 0, "ajuste")).rejects.toThrow("Quantidade inválida");
     expect(fetchMock).not.toHaveBeenCalled();
   });
-  it("falha de forma segura ao tentar enviar fotos sem storage", async () => {
+  it("envia fotos apenas pelo endpoint autenticado da Netlify", async () => {
+    const path = "11111111-1111-4111-8111-111111111111/products/22222222-2222-4222-8222-222222222222-33333333-3333-4333-8333-333333333333.jpg";
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(response({ path }, 201))
+      .mockResolvedValueOnce(response([]));
+    vi.stubGlobal("fetch", fetchMock);
     const { uploadProductPhoto, signedProductPhoto } = await import("./casaApi");
     await expect(uploadProductPhoto("house", "product", new File(["x"], "x.jpg", { type: "image/jpeg" })))
-      .rejects.toThrow("Fotos indisponíveis");
-    await expect(signedProductPhoto("path")).rejects.toThrow("aguardam armazenamento");
+      .resolves.toBe(path);
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toContain("/.netlify/functions/product-photo");
+    expect((options.headers as Record<string, string>).Authorization).toBe("Bearer neon-jwt-test");
+    await expect(signedProductPhoto("other/path")).rejects.toThrow("inválido");
   });
   it("desativa a troca de senha legada até haver endpoint seguro", async () => {
     const { changePassword } = await import("./casaApi");
