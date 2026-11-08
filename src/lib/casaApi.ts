@@ -5,7 +5,7 @@ import { createClient } from "@neon/neon-js/supabase";
 
 export const NEON_URL = (import.meta.env.VITE_NEON_URL ?? "").replace(/\/$/, "");
 export const casaConfigured = Boolean(NEON_URL);
-const client = createClient(NEON_URL || "https://not-configured.invalid/unused");
+const client = createClient(NEON_URL || "https://ep-placeholder.c-2.sa-east-1.aws.neon.tech/unused");
 const DATA_URL = NEON_URL.replace(".c-2.", ".apirest.c-2.");
 
 export type Session = {
