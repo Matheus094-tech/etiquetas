@@ -74,32 +74,24 @@ export async function login(email: string, password: string) {
     if (!session) throw new Error("Não foi possível obter sessão do Neon.");
   } else setSession(logged);
 }
-/**
- * Uma RPC com privilégios restritos resolve o alias de login somente depois
- * de a conta ter reivindicado um código de ativação válido.
- * Nenhuma senha ou código é armazenado no frontend.
- */
-async function anonymousRpc<T>(name: string, body: Record<string, string>): Promise<T> {
-  const response = await fetch(`${DATA_URL}/rest/v1/rpc/${name}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!response.ok) {
-    throw new Error("Não foi possível consultar a ativação. Tente novamente.");
-  }
-  return response.json() as Promise<T>;
-}
-
-export async function lookupHouseholdEmail(input: string): Promise<string> {
+const LOCAL_ALIAS_PREFIX = "casa-nexo-neon-identity-v1-";
+export function lookupHouseholdEmail(input: string, activationCode?: string): Promise<string> {
   const username = normalizeHouseholdUsername(input);
-  const value = await anonymousRpc<string | null>("household_login_email", {
-    p_username: username,
-  });
-  if (typeof value !== "string" || !value.includes("@")) {
-    throw new Error("Esta conta ainda não foi ativada.");
+  if (!["matheus", "stephany"].includes(username)) {
+    return Promise.reject(new Error("Usuário inválido."));
   }
-  return value;
+  const saved = localStorage.getItem(LOCAL_ALIAS_PREFIX + username);
+  if (saved && saved.endsWith("@users.casa-nexo.example")) return Promise.resolve(saved);
+  if (activationCode?.trim()) return activationEmail(username, activationCode);
+  return Promise.reject(new Error(
+    "Este dispositivo precisa do código de ativação na primeira entrada."
+  ));
+}
+export async function loginHousehold(input: string, password: string, activationCode?: string) {
+  const username = normalizeHouseholdUsername(input);
+  const email = await lookupHouseholdEmail(username, activationCode);
+  await login(email, password);
+  localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
 }
 
 export async function activateHouseholdAccount(input: string, code: string, password: string) {
@@ -108,11 +100,6 @@ export async function activateHouseholdAccount(input: string, code: string, pass
   if (password.length < 12) throw new Error("Use uma senha com pelo menos 12 caracteres.");
   const cleanCode = code.trim();
   if (!cleanCode || cleanCode.length > 128) throw new Error("Código de ativação inválido.");
-  const eligible = await anonymousRpc<boolean>("check_household_activation", {
-    p_username: username, p_code: cleanCode,
-  });
-  if (eligible !== true) throw new Error("Código inválido, expirado ou já utilizado.");
-
   const email = await activationEmail(username, cleanCode);
   // A senha é enviada somente ao Neon Auth, nunca à nossa API própria.
   const { error } = await client.auth.signUp({
@@ -131,6 +118,7 @@ export async function activateHouseholdAccount(input: string, code: string, pass
     await apiRequest<string>("POST", "rpc/claim_household_activation", {
       p_username: username, p_code: cleanCode,
     });
+    localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
   } catch (reason) {
     throw new Error(reason instanceof Error
       ? `Conta criada, mas não vinculada à Casa: ${reason.message}. Repita o procedimento com a mesma senha.`
