@@ -49,7 +49,7 @@ export function LoginPage() {
           </label>
           <label htmlFor="casa-password">
             Senha
-            <input id="casa-password" type="password" minLength={12}
+            <input id="casa-password" type="password" minLength={8}
               autoComplete="current-password" value={password}
               onChange={(event) => setPassword(event.target.value)}
               required placeholder="Sua senha" />
