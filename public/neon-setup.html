@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<title>Casa Nexo · Provisionamento temporário</title>
+<meta name="robots" content="noindex,nofollow">
+<style>body{font:16px system-ui;max-width:500px;margin:5rem auto;padding:1rem}form{display:grid;gap:1rem}label{display:grid;gap:.4rem}input,button{font:inherit;padding:.6rem}pre{overflow-wrap:anywhere;white-space:pre-wrap}</style>
+</head><body><h1>Casa Nexo — cadastro temporário</h1>
+<p>Somente para preparar o ambiente de desenvolvimento. Esta página será apagada antes do merge.</p>
+<form id="bootstrap"><label>Identificador interno<input name="email" type="email" required autocomplete="off"></label>
+<label>Nome<input name="name" required autocomplete="off"></label>
+<label>Senha temporária<input name="password" type="password" required autocomplete="new-password"></label>
+<button type="submit">Criar conta no Neon Auth</button></form><pre id="status" aria-live="polite"></pre>
+<script>
+const target = "https://ep-dark-darkness-b6wnyw96.neonauth.c-2.sa-east-1.aws.neon.tech/casa_nexo/auth/sign-up/email";
+document.getElementById("bootstrap").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const form=e.currentTarget;
+  const data=Object.fromEntries(new FormData(form));
+  const status=document.getElementById("status");status.textContent="Registrando…";
+  try{
+    const res=await fetch(target,{method:"POST",credentials:"include",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({email:data.email,name:data.name,password:data.password})});
+    const result=await res.json();
+    status.textContent=res.ok ? "Conta criada: "+String(result.user?.id||result.id||"confirmação recebida") :
+      "Erro "+res.status+": "+String(result.message||result.code||"não foi possível");
+    form.password.value="";
+  }catch(err){status.textContent="Falha de rede ou CORS: "+String(err);}
+});
+</script></body></html>
