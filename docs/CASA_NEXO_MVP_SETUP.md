@@ -1,3 +1,21 @@
+## Ativação de moradores — primeira utilização Neon (08/11/2026)
+
+A branch do PR #6 agora tem uma rota pública `/ativar` para que Matheus e Stephany **escolham a própria senha sem enviá-la pelo chat**.
+
+- O administrador gera dois códigos aleatórios de uso único e insere **somente SHA-256** no banco Neon, em `private.household_activation`. Os códigos brutos **nunca são commitados** nem armazenados no frontend.
+- O morador seleciona o nome, digita o código, escolhe e confirma senha de pelo menos 12 caracteres.
+- O navegador deriva um e-mail técnico não adivinhável a partir do SHA-256 do código e registra a conta no **Neon Auth oficial**.
+- O primeiro login gera um JWT; somente então o banco confere código, usuário autenticado e identificador técnico, vincula a conta à Casa e cria seu livro financeiro pessoal.
+- Os quatro usuários legados de testes ficam com `house_members.active=false` (migration 004), preservando os registros mas revogando acesso à Casa. As novas contas entram com `active=true`.
+- Somente o alias técnico é guardado no localStorage para o login cotidiano; **senha e código nunca são guardados lá**.
+- O usuário entra como `matheus` ou `stephany`. Em outro navegador/dispositivo, pode informar o código original na área recolhível “Primeiro login neste dispositivo?” até cadastrarmos os aliases definitivos no frontend. Isso não reativa nem reutiliza o código; apenas deriva localmente o alias da identidade já existente.
+- O cadastro de novas contas do Neon Auth precisa ficar **temporariamente habilitado** para a ativação, e deve voltar a **desabilitado** imediatamente após ambos concluírem (ou ao término da janela). A RLS impede acesso à Casa para inscrições não vinculadas, mas habilitar cadastro público aumenta a superfície de abuso — não deixar permanentemente ligado.
+- Os tokens expiram no Neon em **10/11/2026 às 14:04 (America/Sao_Paulo)**. Após expiração será necessária renovação administrativa.
+- Não usar `Admin123` ou qualquer senha compartilhada para dados reais.
+- **Pendente:** homologar registros reais de ambos, senha + JWT, função de fotos e RLS; NÃO fazer merge antes desses testes.
+
+Arquivos: `neon/migrations/003_household_activation.sql`, `004_disable_legacy_memberships.sql`, `src/pages/ActivatePage.tsx`.
+
 ## Migração Neon — PR #6 (08/11/2026)
 
 O frontend do PR #6 foi migrado para Neon Managed Better Auth e Neon Data API:
