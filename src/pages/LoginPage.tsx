@@ -22,9 +22,11 @@ export function LoginPage() {
     try {
       await loginHousehold(username, password, activationCode);
       navigate("/", { replace: true });
-    } catch {
-      // Não revelar se o nome de usuário existe ou não.
-      setError("Usuário ou senha incorretos.");
+    } catch (reason) {
+      const needsCode = reason instanceof Error && reason.message.includes("código de ativação");
+      setError(needsCode
+        ? "No primeiro acesso neste dispositivo, abra a opção de código abaixo e informe seu código de ativação."
+        : "Usuário ou senha incorretos.");
     } finally {
       setBusy(false);
     }
