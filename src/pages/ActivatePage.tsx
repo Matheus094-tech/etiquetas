@@ -14,7 +14,7 @@ export function ActivatePage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  if (session) return <Navigate to="/" replace />;
+  if (session && !busy && !error) return <Navigate to="/" replace />;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
