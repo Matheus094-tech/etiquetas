@@ -1,5 +1,19 @@
 # Casa Nexo — primeira versão funcional (autenticação + estoque)
 
+## Mudança de infraestrutura — 08/11/2026
+
+**Decisão:** o Casa Nexo será migrado para um backend separado **fora do Supabase**, para reservar os dois projetos ativos gratuitos do Supabase para `confeitium` e `apego-croche`.
+
+- Supabase `casa-nexo` (ref `yjvtihujlzydefsorxrn`): solicitação de **pausa** enviada e aceita. O projeto é preservado como backup; não foi excluído. A API ficará indisponível enquanto pausado.
+- Supabase `confeitium`: solicitação de **restauração** enviada e aceita.
+- Estado do banco antigo antes da pausa: 2 usuários Auth, 1 Casa, 2 moradores, 3 livros financeiros (compartilhado + pessoal de cada um); **0 produtos, 0 fotos, 0 compras, 0 lançamentos financeiros**.
+- **Novo backend proposto:** Neon Free (PostgreSQL + Managed Better Auth + Object Storage + Functions); conectar o aplicativo Neon antes de executar migração.
+- **Não reutilizar** as credenciais e a API do Supabase na nova hospedagem. Usuários precisarão ser provisionados no novo provedor, com novos fluxos de autenticação e senhas definidas por canal seguro.
+- **Não dar merge no PR #4** enquanto o cliente depender da API `yjvtihujlzydefsorxrn.supabase.co`. A prévia atual do PR está intencionalmente indisponível para login.
+- Refatorar camada `src/lib/casaApi.ts`, trocar Auth, armazenamento de fotos e autorização equivalente a RLS antes de liberar dados privados ou financeiros.
+- Após migração, remover as variáveis Netlify `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` (em todos os contextos) e configurar apenas as variáveis públicas exigidas pela nova integração. **Não fazer essa mudança até o Neon estar operacional.**
+- Manter o gerador de etiquetas M&S original preservado durante a transição.
+
 ## Escopo deste PR
 
 Com um projeto Supabase conectado, disponibiliza:
