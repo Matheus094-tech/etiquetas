@@ -3,13 +3,14 @@
  * Nenhuma credencial PostgreSQL, chave administrativa ou senha fica no navegador.
  * Tokens são geridos pelo SDK Neon. A Data API usa JWT + RLS.
  */
-import { createClient } from "@neon/neon-js";
+import { createAuthClient } from "@neon/neon-js/auth";
 
 const NEON_DATABASE_URL = (import.meta.env.VITE_NEON_DATABASE_URL ?? "").replace(/\/$/, "");
 const NEON_DATA_API_URL = (import.meta.env.VITE_NEON_DATA_API_URL ?? "").replace(/\/$/, "");
 
 export const casaConfigured = Boolean(NEON_DATABASE_URL && NEON_DATA_API_URL);
-const neon = casaConfigured ? createClient(NEON_DATABASE_URL) : null;
+const NEON_AUTH_URL = NEON_DATABASE_URL.replace(".c-2.", ".neonauth.c-2.") + "/auth";
+const neon = casaConfigured ? createAuthClient(NEON_AUTH_URL) : null;
 
 export type Session = {
   access_token: string;
