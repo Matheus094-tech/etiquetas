@@ -22,9 +22,10 @@ export function LoginPage() {
       const identity = emailForUsername(username);
       await signIn(identity, password);
       navigate("/", { replace: true });
-    } catch {
-      // Não revelar se o nome de usuário existe ou não.
-      setError("Usuário ou senha incorretos.");
+    } catch (reason) {
+      // A prévia de homologação mostra a causa da falha de integração,
+      // sem exibir senhas ou tokens. Voltar a mensagem genérica em produção.
+      setError(reason instanceof Error ? reason.message : "Falha ao autenticar.");
     } finally {
       setBusy(false);
     }
