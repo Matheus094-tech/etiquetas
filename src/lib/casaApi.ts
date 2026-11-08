@@ -60,7 +60,9 @@ export async function restoreSession() {
   try {
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
-    setSession(fromAuthSession(data.session, (data as { user?: unknown }).user));
+    const restored = fromAuthSession(data.session, (data as { user?: unknown }).user);
+    if (restored?.user.email) rememberHouseholdAlias(restored.user.email);
+    setSession(restored);
   } catch {
     setSession(null);
   }
@@ -75,6 +77,10 @@ export async function login(email: string, password: string) {
   } else setSession(logged);
 }
 const LOCAL_ALIAS_PREFIX = "casa-nexo-neon-identity-v1-";
+function rememberHouseholdAlias(email: string) {
+  const match = /^(matheus|stephany)\.setup\.[a-f0-9]{24}@users\.casa-nexo\.example$/i.exec(email);
+  if (match) localStorage.setItem(LOCAL_ALIAS_PREFIX + match[1].toLowerCase(), email.toLowerCase());
+}
 export function lookupHouseholdEmail(input: string, activationCode?: string): Promise<string> {
   const username = normalizeHouseholdUsername(input);
   if (!["matheus", "stephany"].includes(username)) {
@@ -114,6 +120,7 @@ export async function activateHouseholdAccount(input: string, code: string, pass
     if (existing.error) throw new Error("Não foi possível criar a conta. Tente novamente.");
   }
   await login(email, password);
+  rememberHouseholdAlias(email);
   // Uma ativação pode ter sido concluída no banco e a resposta perdida;
   // repetir nesse caso deve só restaurar o alias, nunca criar outra Casa.
   try {
