@@ -115,9 +115,10 @@ export async function activateHouseholdAccount(input: string, code: string, pass
   }
   await login(email, password);
   try {
-    await apiRequest<string>("POST", "rpc/claim_household_activation", {
+    const { error: claimError } = await client.rpc("claim_household_activation", {
       p_username: username, p_code: cleanCode,
     });
+    if (claimError) throw new Error(claimError.message);
     localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
   } catch (reason) {
     throw new Error(reason instanceof Error
@@ -171,9 +172,10 @@ function params(values: Record<string, string>) {
   return new URLSearchParams(values).toString();
 }
 export async function getHouses() {
-  return apiRequest<House[]>("GET", "houses?" + params({
-    select: "id,name,created_at", order: "created_at.asc",
-  }));
+  const { data, error } = await client.from("houses")
+    .select("id,name,created_at").order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as House[];
 }
 export async function createHouse(name: string) {
   const user = getSession()?.user;
