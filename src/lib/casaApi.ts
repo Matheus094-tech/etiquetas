@@ -57,7 +57,7 @@ function unwrapError(error: unknown, fallback: string): Error {
 export async function initializeSession(): Promise<Session | null> {
   if (!casaConfigured) { publishSession(null); return null; }
   try {
-    const { data, error } = await requireClient().auth.getSession();
+    const { data, error } = await requireClient().getSession();
     if (error || !data?.user || !data.session) {
       publishSession(null);
       return null;
@@ -76,14 +76,14 @@ export async function initializeSession(): Promise<Session | null> {
   }
 }
 export async function login(email: string, password: string): Promise<void> {
-  const { error } = await requireClient().auth.signIn.email({ email, password });
+  const { error } = await requireClient().signIn.email({ email, password });
   if (error) throw unwrapError(error, "Usuário ou senha incorretos.");
   const active = await initializeSession();
   if (!active) throw new Error("Não foi possível estabelecer a sessão. Entre novamente.");
 }
 export async function logout() {
   try {
-    if (neon) await neon.auth.signOut();
+    if (neon) await neon.signOut();
   } finally {
     publishSession(null);
   }
