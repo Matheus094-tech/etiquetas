@@ -4,26 +4,21 @@ const mocks = vi.hoisted(() => ({
   signIn: vi.fn(),
   getSession: vi.fn(),
   signOut: vi.fn(),
-  getJWTToken: vi.fn(),
 }));
-vi.mock("@neon/neon-js/auth/react/adapters", () => ({
-  BetterAuthReactAdapter: vi.fn(() => ({})),
-}));
-vi.mock("@neon/neon-js", () => ({
+vi.mock("@neon/neon-js/supabase", () => ({
   createClient: vi.fn(() => ({
     auth: {
-      signIn: { email: mocks.signIn },
+      signInWithPassword: mocks.signIn,
       getSession: mocks.getSession,
       signOut: mocks.signOut,
-      getJWTToken: mocks.getJWTToken,
     },
   })),
 }));
 
 const testSession = {
   data: {
-    session: { access_token: "eyJ.test.jwt", expires_at: Date.now() + 900_000 },
-    user: { id: "user-123", email: "morador@example.com" },
+    session: { access_token: "eyJ.test.jwt", expires_at: Date.now() + 900_000,
+      user: { id: "user-123", email: "morador@example.com" } },
   },
   error: null,
 };
@@ -38,7 +33,6 @@ beforeEach(() => {
   mocks.signIn.mockResolvedValue({ data: testSession.data, error: null });
   mocks.getSession.mockResolvedValue(testSession);
   mocks.signOut.mockResolvedValue({ error: null });
-  mocks.getJWTToken.mockResolvedValue("eyJ.test.jwt");
 });
 afterEach(() => {
   vi.unstubAllGlobals();
