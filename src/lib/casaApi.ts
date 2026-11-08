@@ -60,7 +60,7 @@ export async function restoreSession() {
   try {
     const { data, error } = await client.auth.getSession();
     if (error) throw error;
-    setSession(fromAuthSession(data.session, data.user));
+    setSession(fromAuthSession(data.session, (data as { user?: unknown }).user));
   } catch {
     setSession(null);
   }
@@ -68,7 +68,7 @@ export async function restoreSession() {
 export async function login(email: string, password: string) {
   const { data, error } = await client.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
-  const logged = fromAuthSession(data.session, data.user);
+  const logged = fromAuthSession(data.session, (data as { user?: unknown }).user);
   if (!logged) {
     await restoreSession();
     if (!session) throw new Error("Não foi possível obter sessão do Neon.");
@@ -152,7 +152,7 @@ export async function changePassword(_currentPassword: string, _nextPassword: st
 async function token(): Promise<string> {
   const { data, error } = await client.auth.getSession();
   if (error || !data.session) { setSession(null); throw new Error("Sua sessão expirou. Entre novamente."); }
-  const next = fromAuthSession(data.session, data.user);
+  const next = fromAuthSession(data.session, (data as { user?: unknown }).user);
   if (!next) throw new Error("Sessão sem token de autorização.");
   setSession(next);
   return next.access_token;
