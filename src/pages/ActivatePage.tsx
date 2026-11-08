@@ -23,8 +23,8 @@ export function ActivatePage() {
       setError("As duas senhas devem ser iguais.");
       return;
     }
-    if (password.length < 12) {
-      setError("A senha precisa ter pelo menos 12 caracteres.");
+    if (password.length < 8) {
+      setError("A senha precisa ter pelo menos 8 caracteres.");
       return;
     }
     setBusy(true);
@@ -64,10 +64,10 @@ export function ActivatePage() {
               placeholder="Código de uso único" />
           </label>
           <label>Escolha sua senha
-            <input type="password" minLength={12} maxLength={128} required
+            <input type="password" minLength={8} maxLength={128} required
               autoComplete="new-password" value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Mínimo de 12 caracteres" />
+              placeholder="Mínimo de 8 caracteres" />
           </label>
           <label>Confirme sua senha
             <input type="password" minLength={12} maxLength={128} required
