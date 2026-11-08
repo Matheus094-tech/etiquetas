@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useAuth, useHouse } from "../app/CasaProviders";
-import { createInvite } from "../lib/casaApi";
+import { createInvite, changePassword } from "../lib/casaApi";
 import { displayUsername } from "../lib/householdUsers";
 
 export function SettingsPage() {
@@ -10,6 +10,10 @@ export function SettingsPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [repeatPassword, setRepeatPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
   const houseId = house?.id ?? "";
   if (!house) return null;
 
@@ -19,6 +23,27 @@ export function SettingsPage() {
     catch (reason) {
       setError(reason instanceof Error ? reason.message : "Não foi possível criar convite.");
     } finally { setBusy(false); }
+  }
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    if (newPassword !== repeatPassword) {
+      setError("A confirmação da nova senha não corresponde.");
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setRepeatPassword("");
+      setMessage("Senha alterada com sucesso. Utilize a nova senha no próximo acesso.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível alterar a senha.");
+    } finally {
+      setChangingPassword(false);
+    }
   }
   async function copyInvite() {
     try {
@@ -62,14 +87,26 @@ export function SettingsPage() {
         <p>Conectado como <strong>{displayUsername(session?.user.email)}</strong></p>
         <button className="casa-secondary" onClick={() => { void signOut(); }}>Sair da conta</button>
       </div>
-      <div className="casa-panel">
-        <h3>Segurança da conta</h3>
-        <p className="casa-hint">
-          A troca e recuperação de senha ainda precisam ser habilitadas no Neon Auth.
-          Por segurança, a aplicação não permite alterar senhas diretamente no banco.
-          Não utilize senhas temporárias compartilhadas para guardar dados financeiros.
-        </p>
-      </div>
+      <form className="casa-panel casa-form" onSubmit={(event) => { void submitPassword(event); }}>
+        <h3>Alterar minha senha</h3>
+        <p className="casa-hint">A senha é modificada diretamente no Neon Auth, sem ser salva no aplicativo.
+          Guarde a nova senha com segurança: ainda não há recuperação por e-mail.</p>
+        <label>Senha atual
+          <input type="password" autoComplete="current-password" required
+            value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+        </label>
+        <label>Nova senha (mínimo 12 caracteres)
+          <input type="password" autoComplete="new-password" minLength={12} required
+            value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+        </label>
+        <label>Confirmar nova senha
+          <input type="password" autoComplete="new-password" minLength={12} required
+            value={repeatPassword} onChange={(event) => setRepeatPassword(event.target.value)} />
+        </label>
+        <button className="casa-primary" disabled={changingPassword}>
+          {changingPassword ? "Atualizando…" : "Alterar senha"}
+        </button>
+      </form>
       {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
       {message && <p className="casa-alert casa-alert--success" role="status">{message}</p>}
     </section>
