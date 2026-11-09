@@ -216,9 +216,25 @@ function HouseInventory({ houseId }: { houseId: string }) {
           const photoUrl = item.photo_path ? photoUrls[item.photo_path] : null;
           return <article className="casa-product" key={item.id}>
             <div className="casa-product__media">
-              {photoUrl
-                ? <img loading="lazy" src={photoUrl} alt={`Fotografia de ${item.name}`} />
-                : <span aria-hidden="true">📦</span>}
+              {photoUrl ? (
+                <img loading="lazy" src={photoUrl} alt={`Fotografia de ${item.name}`} />
+              ) : (
+                <label className="casa-product__empty-photo">
+                  <span className="casa-product__empty-photo-icon" aria-hidden="true">📷</span>
+                  <strong>{updatingId === item.id ? "Enviando…" : "Adicionar foto"}</strong>
+                  <small>Fotografe ou escolha da galeria</small>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    aria-label={`Adicionar foto de ${item.name}`}
+                    disabled={updatingId === item.id}
+                    onChange={(event) => {
+                      void updatePhoto(item.id, event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
             </div>
             <div className="casa-product__body">
               <div className="casa-product__head">
@@ -227,6 +243,7 @@ function HouseInventory({ houseId }: { houseId: string }) {
                 <span className={low ? "casa-badge casa-badge--low" : "casa-badge"}>
                   {low ? "Repor" : "Em estoque"}</span>
               </div>
+              {item.category && <p className="casa-product__category">{item.category}</p>}
               <p className="casa-product__place">📍 {place?.name ?? "Local não informado"}</p>
               {lot?.expires_on && <p className="casa-product__place">Validade: {new Date(lot.expires_on + "T12:00:00").toLocaleDateString("pt-BR")}</p>}
               <div className="casa-product__footer">

@@ -1,3 +1,41 @@
+## Ativação de moradores — primeira utilização Neon (08/11/2026)
+
+A branch do PR #6 agora tem uma rota pública `/ativar` para que Matheus e Stephany **escolham a própria senha sem enviá-la pelo chat**.
+
+- O administrador gera dois códigos aleatórios de uso único e insere **somente SHA-256** no banco Neon, em `private.household_activation`. Os códigos brutos **nunca são commitados** nem armazenados no frontend.
+- O morador seleciona o nome, digita o código, escolhe e confirma senha de pelo menos 8 caracteres.
+- O navegador deriva um e-mail técnico não adivinhável a partir do SHA-256 do código e registra a conta no **Neon Auth oficial**.
+- O primeiro login gera um JWT; somente então o banco confere código, usuário autenticado e identificador técnico, vincula a conta à Casa e cria seu livro financeiro pessoal.
+- Os quatro usuários legados de testes ficam com `house_members.active=false` (migration 004), preservando os registros mas revogando acesso à Casa. As novas contas entram com `active=true`.
+- Somente o alias técnico é guardado no localStorage para o login cotidiano; **senha e código nunca são guardados lá**.
+- O usuário entra como `matheus` ou `stephany`. Em outro navegador/dispositivo, pode informar o código original na área recolhível “Primeiro login neste dispositivo?” até cadastrarmos os aliases definitivos no frontend. Isso não reativa nem reutiliza o código; apenas deriva localmente o alias da identidade já existente.
+- O cadastro de novas contas do Neon Auth precisa ficar **temporariamente habilitado** para a ativação, e deve voltar a **desabilitado** imediatamente após ambos concluírem (ou ao término da janela). A RLS impede acesso à Casa para inscrições não vinculadas, mas habilitar cadastro público aumenta a superfície de abuso — não deixar permanentemente ligado.
+- Os tokens expiram no Neon em **10/11/2026 às 14:04 (America/Sao_Paulo)**. Após expiração será necessária renovação administrativa.
+- Não usar `Admin123` ou qualquer senha compartilhada para dados reais.
+- **Pendente:** homologar registros reais de ambos, senha + JWT, função de fotos e RLS; NÃO fazer merge antes desses testes.
+
+Arquivos: `neon/migrations/003_household_activation.sql`, `004_disable_legacy_memberships.sql`, `src/pages/ActivatePage.tsx`.
+
+## Migração Neon — PR #6 (08/11/2026)
+
+O frontend do PR #6 foi migrado para Neon Managed Better Auth e Neon Data API:
+- Cliente `@neon/neon-js` com sessão restaurada no React, autenticação por usuário + senha (mapeado para identidade técnica) e Bearer JWT.
+- API PostgreSQL Neon por HTTPS; `VITE_NEON_URL` está em `.env.production` porque é **endpoint público sem segredo**. Nenhuma connection string PostgreSQL ou service key foi adicionada ao GitHub.
+- As tabelas e RLS foram aplicadas no projeto Neon `dawn-hill-01046642`; banco `casa_nexo`.
+- Upload/leitura de fotos por **Netlify Functions + Netlify Blobs**, com autorização por JWT e consulta de produto via Neon Data API sujeita à RLS; limite 8 MB, JPEG/PNG/WebP e objetos privados.
+- As rotas originais de etiqueta foram preservadas, enquanto a integração Supabase antiga não é mais usada na branch.
+- Página pública temporária de provisionamento e workflows de instalação foram removidos após testes; não entram no PR final.
+
+**Bloqueios antes do merge**:
+- [ ] Duas identidades Neon criadas pela administração não possuem senha de login. O fluxo de criação administrativa não permitiu definir senha; as senhas do Supabase antigo não podem ser migradas. É preciso provisionar os dois usuários **via fluxo suportado pelo Neon Auth**, mantendo a Casa e os livros vinculados aos novos UUIDs, e testar login real.
+- [ ] Testar upload/consulta de foto end-to-end no deploy preview com JWT válido, incluindo recusa a usuário não membro.
+- [ ] Testar RLS completo com JWT real na Neon Data API, inclusive dados financeiros pessoais.
+- [ ] Validar ciclo de sessão, logout e recuperação segura de credenciais sem e-mail real.
+- [ ] Conferir implantações de Netlify Functions e quotas de Netlify Blobs.
+- [ ] Garantir CI e deploy preview verdes no commit final.
+
+**Não realizar merge** enquanto login com senha e regras de acesso não forem homologados. Este PR não contém nenhuma alteração direta na `main`.
+
 # Casa Nexo — primeira versão funcional (autenticação + estoque)
 
 ## Mudança de infraestrutura — 08/11/2026
