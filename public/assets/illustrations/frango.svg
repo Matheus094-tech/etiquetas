@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- platter and herbs -->
+<path fill="none" d="M16 181 Q116 205 220 180 M38 191 Q120 212 208 190" />
+<path d="M40 179 q-14-22-24-22 m24 22 q-11-29-8-40 M194 172 q24-19 30-29 M187 184 q25 5 37-4" fill="none" stroke-width="4"/>
+<!-- roasted bird body -->
+<path d="M56 134 C57 91 95 61 142 64 C182 65 202 99 190 141 C179 173 135 182 97 169 C76 169 58 156 56 134Z"/>
+<!-- breast contour -->
+<path d="M118 72 C145 79 165 104 165 132 C164 153 147 162 131 165" fill="none" stroke-width="3.5"/>
+<!-- folded wing -->
+<path d="M97 114 C106 91 136 99 143 116 C138 134 118 148 98 146 C88 136 88 126 97 114Z"/>
+<path d="M98 136 C112 138 124 130 135 114 M107 145 Q124 139 131 132" fill="none" stroke-width="3.5"/>
+<!-- legs + bone ends -->
+<path d="M174 121 C185 113 198 122 199 136 L217 151 C223 143 233 145 233 153 C233 160 225 164 217 161 C210 171 203 168 199 161 L174 146 C165 142 165 128 174 121Z"/>
+<path d="M182 132 L203 149 M179 144 L198 155" fill="none" stroke-width="3.5"/>
+<!-- old-style engraving, broad enough for 203DPI -->
+<path d="M70 103 l13-12 M67 115 l24-26 M67 129 l19-24 M72 144 l15-14 M84 158 l9-13 M106 76 l15-5 M128 78 l12 6 M149 89 l12 13 M169 108 l11 17 M173 146 l-8 10 M151 159 l-8 8 M113 157 l-7 8" fill="none" stroke-width="3.6"/>
+<path d="M95 83 q-9 2-12 10 M80 153 l5 5" fill="none" stroke-width="3"/>
+</g></svg>

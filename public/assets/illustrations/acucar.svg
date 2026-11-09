@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- stacked sugar cubes with textured crystalline hatching -->
+<path d="M73 59 L115 41 L157 60 L117 83Z"/>
+<path d="M73 59 L73 111 L116 135 L117 83Z"/>
+<path d="M117 83 L157 60 L157 109 L116 135Z"/>
+<path d="M31 114 L77 94 L122 115 L76 137Z"/>
+<path d="M31 114 L31 165 L76 188 L76 137Z"/>
+<path d="M76 137 L122 115 L122 166 L76 188Z"/>
+<path d="M122 126 L165 104 L205 125 L161 147Z"/>
+<path d="M122 126 L122 172 L161 193 L161 147Z"/>
+<path d="M161 147 L205 125 L205 173 L161 193Z"/>
+<path d="M86 82 l12 7 M86 103 l17 11 M133 95 l12-7 M44 146 l17 9 M84 153 l18-9 M139 158 l11 8 M176 157 l16-8" fill="none" stroke-width="3"/>
+<path d="M16 196 L26 195 M214 186 l11 4 M102 197 l10-2" fill="none" stroke-width="4"/>
+</g></svg>

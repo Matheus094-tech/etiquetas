@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- folded milk carton -->
+<path d="M83 52 L136 36 L173 61 L121 78Z"/>
+<path d="M83 52 L73 93 L80 186 L132 202 L132 93 L121 78Z"/>
+<path d="M121 78 L173 61 L182 97 L177 184 L132 202 L132 93Z"/>
+<path d="M73 93 L132 112 L182 97 M82 151 L132 166 L179 151" fill="none" stroke-width="3.5"/>
+<path d="M100 112 C91 131 88 137 98 148 C108 158 123 146 118 135 C115 129 109 120 100 112Z" stroke-width="4"/>
+<path d="M89 67 l24 9 M140 83 l26-9 M92 166 l27 9 M142 181 l21-8" fill="none" stroke-width="3.5"/>
+<!-- drops -->
+<path d="M44 176 Q32 191 45 198 Q59 192 44 176Z M196 180 Q188 194 198 200 Q211 197 196 180Z" stroke-width="3.5"/>
+</g></svg>

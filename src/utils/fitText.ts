@@ -1,12 +1,15 @@
 export interface FitTextOptions {
-  /** Maximum width, in the same user units as the SVG viewBox, a line may occupy. */
+  /** Maximum width in SVG viewBox user units (independent of screen pixels). */
   maxWidth: number;
   maxFontSize: number;
+  /** Preferred minimum; text can be smaller if necessary to prevent clipping. */
   minFontSize: number;
   fontFamily: string;
   fontWeight?: string | number;
-  /** Font size step used while searching for the best fit. */
   step?: number;
+  /** Cap two-line text independently of a one-line title's height budget. */
+  maxTwoLineFontSize?: number;
+  allowWrap?: boolean;
 }
 
 export interface FitTextResult {
@@ -18,24 +21,15 @@ let measurementContext: CanvasRenderingContext2D | null | undefined;
 
 function getMeasurementContext(): CanvasRenderingContext2D | null {
   if (measurementContext !== undefined) return measurementContext;
-  if (typeof document === "undefined") {
-    measurementContext = null;
-    return measurementContext;
-  }
+  if (typeof document === "undefined") return null;
   try {
-    const canvas = document.createElement("canvas");
-    measurementContext = canvas.getContext("2d");
+    measurementContext = document.createElement("canvas").getContext("2d");
   } catch {
     measurementContext = null;
   }
   return measurementContext;
 }
 
-/**
- * Measures text width. Falls back to a heuristic average glyph width when a
- * 2D canvas context isn't available (e.g. jsdom in unit tests), keeping the
- * fitting algorithm deterministic and testable outside a real browser.
- */
 function measureTextWidth(
   text: string,
   fontSize: number,
@@ -47,68 +41,69 @@ function measureTextWidth(
     ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
     return ctx.measureText(text).width;
   }
-  const AVERAGE_GLYPH_WIDTH_RATIO = 0.62;
-  return text.length * fontSize * AVERAGE_GLYPH_WIDTH_RATIO;
+  // Conservative approximation for jsdom/offline environments.
+  return Array.from(text).length * fontSize * 0.64;
 }
 
 function splitIntoTwoLines(text: string): [string, string] | null {
-  if (text.includes(" ")) {
-    const words = text.split(" ");
-    if (words.length > 1) {
-      let bestIndex = 1;
-      let bestDiff = Infinity;
-      for (let i = 1; i < words.length; i += 1) {
-        const left = words.slice(0, i).join(" ");
-        const right = words.slice(i).join(" ");
-        const diff = Math.abs(left.length - right.length);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          bestIndex = i;
-        }
-      }
-      return [words.slice(0, bestIndex).join(" "), words.slice(bestIndex).join(" ")];
+  const segments = text.includes(" ")
+    ? text.split(/\s+/)
+    : text.includes("/")
+      ? text.split(/(?<=\/)/)
+      : [];
+  if (segments.length < 2) return null;
+
+  let best: [string, string] | null = null;
+  let bestDifference = Infinity;
+  for (let i = 1; i < segments.length; i += 1) {
+    const left = segments.slice(0, i).join(" ").trim();
+    const right = segments.slice(i).join(" ").trim();
+    if (!left || !right) continue;
+    const difference = Math.abs(left.length - right.length);
+    if (difference < bestDifference) {
+      best = [left, right];
+      bestDifference = difference;
     }
   }
-
-  if (text.includes("/")) {
-    const index = text.indexOf("/");
-    return [text.slice(0, index + 1), text.slice(index + 1)];
-  }
-
-  return null;
+  return best;
 }
 
-/**
- * Finds the largest font size (in one or two lines) that keeps `rawText`
- * within `maxWidth`, considering the available space rather than raw
- * character count.
- */
+function largestFittingFont(
+  lines: string[],
+  max: number,
+  options: FitTextOptions
+): number {
+  const { maxWidth, fontFamily, fontWeight = 700, step = 2 } = options;
+  for (let size = max; size >= 1; size -= Math.max(1, step)) {
+    if (lines.every((line) => measureTextWidth(line, size, fontFamily, fontWeight) <= maxWidth)) {
+      return size;
+    }
+  }
+  return 1;
+}
+
+/** Width-safe name fitting; wrapping only when it improves physical legibility. */
 export function fitText(rawText: string, options: FitTextOptions): FitTextResult {
   const text = rawText.trim();
-  const { maxWidth, maxFontSize, minFontSize, fontFamily, fontWeight = 700, step = 2 } = options;
+  if (!text) return { lines: [""], fontSize: options.maxFontSize };
 
-  if (!text) {
-    return { lines: [""], fontSize: maxFontSize };
-  }
-
-  for (let size = maxFontSize; size >= minFontSize; size -= step) {
-    if (measureTextWidth(text, size, fontFamily, fontWeight) <= maxWidth) {
-      return { lines: [text], fontSize: size };
-    }
+  const oneLineFont = largestFittingFont([text], options.maxFontSize, options);
+  if (options.allowWrap === false) {
+    return { lines: [text], fontSize: oneLineFont };
   }
 
   const split = splitIntoTwoLines(text);
   if (split) {
-    for (let size = maxFontSize; size >= minFontSize; size -= step) {
-      const fitsBoth =
-        measureTextWidth(split[0], size, fontFamily, fontWeight) <= maxWidth &&
-        measureTextWidth(split[1], size, fontFamily, fontWeight) <= maxWidth;
-      if (fitsBoth) {
-        return { lines: split, fontSize: size };
-      }
+    const twoLineFont = largestFittingFont(
+      split,
+      Math.min(options.maxFontSize, options.maxTwoLineFontSize ?? options.maxFontSize),
+      options
+    );
+    // A second line costs vertical space; require a meaningful size gain.
+    if (twoLineFont >= oneLineFont * 1.12 && twoLineFont >= options.minFontSize) {
+      return { lines: split, fontSize: twoLineFont };
     }
-    return { lines: split, fontSize: minFontSize };
   }
 
-  return { lines: [text], fontSize: minFontSize };
+  return { lines: [text], fontSize: oneLineFont };
 }
