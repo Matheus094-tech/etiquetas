@@ -6,7 +6,12 @@ import { activationEmail, normalizeHouseholdUsername } from "./householdUsers";
 
 export const NEON_URL = (import.meta.env.VITE_NEON_URL ?? "").replace(/\/$/, "");
 export const casaConfigured = Boolean(NEON_URL);
-const client = createClient(NEON_URL || "https://ep-placeholder.c-2.sa-east-1.aws.neon.tech/unused");
+// A Data API exige JWT até em consultas pré-login. Um token anônimo
+// só dá acesso a funções explicitamente liberadas para o papel anonymous.
+const client = createClient(
+  NEON_URL || "https://ep-placeholder.c-2.sa-east-1.aws.neon.tech/unused",
+  { auth: { allowAnonymous: true } },
+);
 const DATA_URL = NEON_URL.replace(".c-2.", ".apirest.c-2.");
 
 export type Session = {
