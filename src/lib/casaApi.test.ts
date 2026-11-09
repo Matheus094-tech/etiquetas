@@ -109,11 +109,12 @@ describe("Casa Nexo no Neon", () => {
     const { changePassword } = await import("./casaApi");
     await expect(changePassword("senha-antiga", "senha-nova")).rejects.toThrow("indisponível");
   });
-  it("faz login pelo apelido com alias local, sem guardar senha no navegador", async () => {
+  it("faz login pelo apelido em dispositivo novo, sem código de ativação", async () => {
     const alias = "matheus.setup.aaaaaaaaaaaaaaaaaaaaaaaa@users.casa-nexo.example";
-    localStorage.setItem("casa-nexo-neon-identity-v1-matheus", alias);
+    databaseMock.rpc.mockResolvedValueOnce({ data: alias, error: null });
     const { loginHousehold } = await import("./casaApi");
     await loginHousehold("MATHEUS", "senhaPrivada1234!");
+    expect(databaseMock.rpc).toHaveBeenCalledWith("household_login_email", { p_username: "matheus" });
     expect(authMock.signInWithPassword).toHaveBeenCalledWith({
       email: alias, password: "senhaPrivada1234!",
     });
