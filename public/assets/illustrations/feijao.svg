@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- shallow rustic bowl filled with kidney beans -->
+<path d="M28 121 Q112 173 210 121 L187 177 Q119 203 49 177Z"/>
+<ellipse cx="119" cy="123" rx="93" ry="43" />
+<path d="M46 169 Q120 209 190 169" fill="none" stroke-width="3.5"/>
+<g stroke-width="4">
+<path d="M53 111 C43 94 72 90 82 106 C88 121 73 132 60 122 C67 121 73 117 71 111" />
+<path d="M95 99 C94 79 124 83 127 103 C125 117 111 119 100 114 C109 111 114 105 111 100" />
+<path d="M143 98 C137 82 165 76 176 95 C181 112 160 121 151 114 C161 110 167 103 161 98" />
+<path d="M71 139 C60 122 90 114 103 132 C110 149 91 158 79 152 C88 149 92 142 88 137"/>
+<path d="M125 139 C115 120 149 117 156 136 C161 155 142 165 131 154 C139 154 147 147 144 139"/>
+<path d="M166 134 C163 119 185 116 193 131 C198 146 184 152 174 147 C180 143 186 139 181 133"/>
+</g>
+<path d="M53 151 q67 35 137 2" fill="none" stroke-width="3"/>
+</g></svg>

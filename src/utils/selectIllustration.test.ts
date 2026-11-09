@@ -1,53 +1,49 @@
 import { describe, expect, it } from "vitest";
 import { detectIllustrationFromName, selectIllustration } from "./selectIllustration";
 
-describe("detectIllustrationFromName", () => {
-  it("detects legumes from keywords", () => {
-    expect(detectIllustrationFromName("Legumes")).toBe("legumes");
-    expect(detectIllustrationFromName("Verdura")).toBe("legumes");
+describe("automatic food illustrations", () => {
+  it.each([
+    ["Frango", "frango"],
+    ["Peito de frango", "frango"],
+    ["FRANGO’", "frango"],
+    ["Carne bovina", "carne-bovina"],
+    ["Bife", "carne-bovina"],
+    ["Carne moída", "carne-moida"],
+    ["Patinho", "carne-moida"],
+    ["Batata/Patinho", "batata-patinho"],
+    ["Carne com batata", "carne-com-batata"],
+    ["Arroz", "arroz"],
+    ["Feijão", "feijao"],
+    ["Café", "cafe"],
+    ["Açúcar", "acucar"],
+    ["Macarrão", "macarrao"],
+    ["Sal", "sal"],
+    ["Leite condensado", "leite"],
+    ["Legumes", "legumes"],
+    ["Banana", "fruta-coloral"],
+  ] as const)("maps %s to %s", (name, expected) => {
+    expect(detectIllustrationFromName(name)).toBe(expected);
   });
 
-  it("detects carne-moida from keywords, accents included", () => {
-    expect(detectIllustrationFromName("Patinho")).toBe("carne-moida");
-    expect(detectIllustrationFromName("Carne moída")).toBe("carne-moida");
-    expect(detectIllustrationFromName("Carne moida")).toBe("carne-moida");
+  it("does not treat a substring as a keyword", () => {
+    expect(detectIllustrationFromName("Salsicha")).toBe("default");
+    expect(detectIllustrationFromName("Cafeteira")).toBe("default");
   });
 
-  it("matches the batata/patinho phrase before the more general carne-com-batata rule", () => {
-    expect(detectIllustrationFromName("Batata/Patinho")).toBe("batata-patinho");
-    expect(detectIllustrationFromName("Batata patinho")).toBe("batata-patinho");
-  });
-
-  it("detects carne-com-batata when batata appears together with a beef term", () => {
-    expect(detectIllustrationFromName("Carne com Batata")).toBe("carne-com-batata");
-    expect(detectIllustrationFromName("Batata com carne")).toBe("carne-com-batata");
-  });
-
-  it("detects fruta-coloral from keywords", () => {
-    expect(detectIllustrationFromName("Banana")).toBe("fruta-coloral");
-    expect(detectIllustrationFromName("Coloral")).toBe("fruta-coloral");
-    expect(detectIllustrationFromName("Maçã")).toBe("fruta-coloral");
-  });
-
-  it("considers the description when matching", () => {
-    expect(detectIllustrationFromName("Bife", "carne bovina")).toBe("carne-moida");
+  it("only consults the description if the name has no matching product", () => {
+    expect(detectIllustrationFromName("Peito de frango", "com batata")).toBe("frango");
     expect(detectIllustrationFromName("Prato do dia", "legumes variados")).toBe("legumes");
+    expect(detectIllustrationFromName("Bife", "carne bovina")).toBe("carne-bovina");
   });
 
-  it("falls back to the default ornament when nothing matches", () => {
-    expect(detectIllustrationFromName("Frango")).toBe("default");
-    expect(detectIllustrationFromName("Arroz")).toBe("default");
+  it("uses the neutral fallback for unmapped products", () => {
     expect(detectIllustrationFromName("")).toBe("default");
-  });
-});
-
-describe("selectIllustration", () => {
-  it("uses automatic detection when manual selection is 'auto'", () => {
-    expect(selectIllustration("Legumes", "", "auto")).toBe("legumes");
+    expect(detectIllustrationFromName("Produto sem categoria")).toBe("default");
   });
 
-  it("lets a manual selection override automatic detection", () => {
-    expect(selectIllustration("Legumes", "", "carne-moida")).toBe("carne-moida");
-    expect(selectIllustration("Patinho", "", "none")).toBe("none");
+  it("honors manual selection and none", () => {
+    expect(selectIllustration("Frango", "", "auto")).toBe("frango");
+    expect(selectIllustration("Frango", "", "arroz")).toBe("arroz");
+    expect(selectIllustration("Frango", "", "none")).toBe("none");
   });
 });

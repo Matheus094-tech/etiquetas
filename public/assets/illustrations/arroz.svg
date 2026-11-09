@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- sack of rice with open mouth and piled grains -->
+<path d="M77 67 Q119 51 166 68 L184 171 Q123 197 52 171Z"/>
+<path d="M76 69 Q120 78 168 69 L171 82 Q118 94 72 82Z"/>
+<path d="M61 163 Q116 180 175 164 M56 179 Q121 201 181 179" fill="none" stroke-width="3"/>
+<path d="M82 97 Q124 111 158 97 M80 155 Q118 165 160 154" fill="none" stroke-width="3.5"/>
+<!-- a recognizable stalk of rice -->
+<path d="M124 142 Q119 119 124 101 M121 121 Q100 112 97 101 M126 121 Q148 112 151 103" fill="none" stroke-width="3.5"/>
+<ellipse cx="99" cy="105" rx="9" ry="4" transform="rotate(35 99 105)" />
+<ellipse cx="108" cy="114" rx="9" ry="4" transform="rotate(32 108 114)" />
+<ellipse cx="148" cy="104" rx="9" ry="4" transform="rotate(-35 148 104)" />
+<ellipse cx="138" cy="112" rx="9" ry="4" transform="rotate(-35 138 112)" />
+<ellipse cx="118" cy="103" rx="9" ry="4" transform="rotate(15 118 103)" />
+<path d="M67 97 l9 8 M62 112 l12 13 M61 137 l12 9 M165 115 l9-7 M165 139 l13-5" fill="none" stroke-width="3.7"/>
+<!-- loose grains -->
+<ellipse cx="30" cy="184" rx="9" ry="4" transform="rotate(-25 30 184)" />
+<ellipse cx="44" cy="194" rx="9" ry="4" transform="rotate(24 44 194)" />
+<ellipse cx="194" cy="189" rx="9" ry="4" transform="rotate(30 194 189)" />
+<ellipse cx="211" cy="179" rx="9" ry="4" transform="rotate(-20 211 179)" />
+</g></svg>

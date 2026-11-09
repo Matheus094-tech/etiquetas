@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- vintage fork winding long spaghetti -->
+<path d="M51 53 V23 M64 54 V19 M78 54 V23 M91 54 V25 M51 51 Q69 69 92 51 L90 98 Q72 118 58 97Z" />
+<path d="M61 98 Q36 125 45 153 C55 176 102 147 120 174 C134 196 172 182 186 163" fill="none"/>
+<path d="M71 103 Q59 132 73 145 C93 161 124 133 136 158 C149 184 184 165 201 146" fill="none"/>
+<path d="M80 101 Q93 124 95 132 C99 146 132 118 155 137 C171 153 190 146 211 127" fill="none"/>
+<!-- bowtie pasta -->
+<path d="M128 53 L173 30 L171 90 L129 70 L99 89 L99 35Z"/>
+<path d="M128 53 L129 70 M108 45 l12 13 M110 76 l10-12 M159 42 l-17 14 M159 79 l-16-16" fill="none" stroke-width="3.5"/>
+<path d="M48 182 Q121 205 214 178" fill="none" stroke-width="3"/>
+</g></svg>

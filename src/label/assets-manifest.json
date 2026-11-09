@@ -1,5 +1,5 @@
 {
-  "packageVersion": "1.0.0",
+  "packageVersion": "1.1.0",
   "physicalSizeMm": {
     "width": 40,
     "height": 12
@@ -17,6 +17,10 @@
     "600dpi": {
       "width": 945,
       "height": 283
+    },
+    "203dpi": {
+      "width": 320,
+      "height": 96
     }
   },
   "template": "assets/template/etiqueta-base-40x12mm.png",
@@ -107,6 +111,97 @@
       "file": "assets/illustrations/default-ornamento.png",
       "priority": 0,
       "match": {}
+    },
+    {
+      "id": "frango",
+      "file": "assets/illustrations/frango.svg",
+      "priority": 110,
+      "match": {
+        "any": [
+          "frango"
+        ]
+      }
+    },
+    {
+      "id": "carne-bovina",
+      "file": "assets/illustrations/carne-bovina.svg",
+      "priority": 100,
+      "match": {
+        "any": [
+          "bife",
+          "carne bovina"
+        ]
+      }
+    },
+    {
+      "id": "arroz",
+      "file": "assets/illustrations/arroz.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "arroz"
+        ]
+      }
+    },
+    {
+      "id": "feijao",
+      "file": "assets/illustrations/feijao.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "feijão"
+        ]
+      }
+    },
+    {
+      "id": "cafe",
+      "file": "assets/illustrations/cafe.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "café"
+        ]
+      }
+    },
+    {
+      "id": "acucar",
+      "file": "assets/illustrations/acucar.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "açúcar"
+        ]
+      }
+    },
+    {
+      "id": "macarrao",
+      "file": "assets/illustrations/macarrao.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "macarrão"
+        ]
+      }
+    },
+    {
+      "id": "sal",
+      "file": "assets/illustrations/sal.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "sal"
+        ]
+      }
+    },
+    {
+      "id": "leite",
+      "file": "assets/illustrations/leite.svg",
+      "priority": 90,
+      "match": {
+        "any": [
+          "leite"
+        ]
+      }
     }
   ]
 }

@@ -1,20 +1,12 @@
-import type { HistoryEntry, IllustrationKey, LabelData } from "../label/label.types";
+import { ILLUSTRATION_OPTIONS, type IllustrationKey, type HistoryEntry, type LabelData } from "../label/label.types";
 
 export const HISTORY_STORAGE_KEY = "gerador-etiquetas-ms:history";
 export const MAX_HISTORY_ENTRIES = 10;
 
-const ILLUSTRATION_KEYS: IllustrationKey[] = [
-  "auto",
-  "legumes",
-  "carne-moida",
-  "carne-com-batata",
-  "batata-patinho",
-  "fruta-coloral",
-  "none",
-];
+const ILLUSTRATION_KEYS = new Set<IllustrationKey>(ILLUSTRATION_OPTIONS.map((option) => option.value));
 
 function isIllustrationKey(value: unknown): value is IllustrationKey {
-  return typeof value === "string" && (ILLUSTRATION_KEYS as string[]).includes(value);
+  return typeof value === "string" && ILLUSTRATION_KEYS.has(value as IllustrationKey);
 }
 
 function isHistoryEntry(value: unknown): value is HistoryEntry {
@@ -43,7 +35,6 @@ export function serializeHistory(entries: HistoryEntry[]): string {
   return JSON.stringify(entries.slice(0, MAX_HISTORY_ENTRIES));
 }
 
-/** Defensively parses stored history JSON, discarding anything malformed. */
 export function parseHistory(raw: string | null): HistoryEntry[] {
   if (!raw) return [];
   try {
@@ -55,7 +46,6 @@ export function parseHistory(raw: string | null): HistoryEntry[] {
   }
 }
 
-/** Prepends a new entry built from `data`, keeping at most MAX_HISTORY_ENTRIES items. */
 export function addToHistory(entries: HistoryEntry[], data: LabelData): HistoryEntry[] {
   const nextEntry = createHistoryEntry(data);
   return [nextEntry, ...entries].slice(0, MAX_HISTORY_ENTRIES);

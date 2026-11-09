@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- enlarged coffee beans, characteristic central creases -->
+<path d="M47 109 C20 91 40 44 72 42 C114 40 138 85 106 119 C83 146 57 129 47 109Z"/>
+<path d="M75 51 C51 67 78 80 66 98 C57 111 64 117 78 126" fill="none" stroke-width="5"/>
+<path d="M117 141 C96 109 130 72 165 79 C205 87 214 141 188 170 C161 195 132 176 117 141Z"/>
+<path d="M157 88 C136 111 169 123 154 146 C149 154 157 167 177 175" fill="none" stroke-width="5"/>
+<path d="M45 75 l13-18 M43 96 l13-10 M89 51 l14 14 M101 112 l-11 11 M129 107 l13-16 M124 140 l12-9 M177 92 l16 17 M194 145 l-8 18" fill="none" stroke-width="3.5"/>
+<path d="M30 170 Q76 158 102 177 M105 181 q45 18 95 5" fill="none" stroke-width="3"/>
+</g></svg>

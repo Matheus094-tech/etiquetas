@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 220" role="img">
+<g fill="#fff" stroke="#000" stroke-width="5.5" stroke-linejoin="round" stroke-linecap="round">
+<!-- iconic steak, with fat seam and grill-style engraving -->
+<path d="M29 122 C24 85 58 45 102 47 C125 39 158 54 170 75 C198 81 217 111 208 143 C198 173 165 186 136 179 C99 198 53 176 34 153 C28 143 27 133 29 122Z"/>
+<path d="M64 123 C57 100 77 73 106 71 C133 67 153 89 157 111 C162 133 146 154 122 160 C91 170 65 154 64 123Z" fill="none" stroke-width="6"/>
+<path d="M82 119 C77 106 89 88 103 91 C117 92 130 102 131 115 C130 130 113 141 100 138 C89 135 83 127 82 119Z" stroke-width="4"/>
+<path d="M47 115 l15-30 M42 131 l20-31 M48 148 l14-21 M68 162 l13-12 M90 174 l18-16 M144 172 l20-19 M172 158 l18-24 M184 133 l15-21 M168 95 l17 10 M110 55 l19 9 M81 65 l13-13" fill="none" stroke-width="3.4"/>
+<path d="M92 106 l10 17 M105 100 l13 23 M113 132 l11-9" fill="none" stroke-width="2.8"/>
+</g></svg>

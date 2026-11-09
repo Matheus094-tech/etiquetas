@@ -1,14 +1,10 @@
 import { triggerDownload } from "./download";
 import { embedSvgImages } from "./embedSvgImages";
 import { serializeSvgElement } from "./exportSvg";
+import { LABEL_DIMENSIONS } from "../label/layout";
 
 const MM_PER_INCH = 25.4;
-const LABEL_WIDTH_MM = 40;
-const LABEL_HEIGHT_MM = 12;
-
-function mmToPx(mm: number, dpi: number): number {
-  return Math.round((mm / MM_PER_INCH) * dpi);
-}
+const mmToPx = (mm: number, dpi: number) => Math.round((mm / MM_PER_INCH) * dpi);
 
 export interface PngExportPreset {
   dpi: number;
@@ -16,11 +12,12 @@ export interface PngExportPreset {
   height: number;
 }
 
-/** The two print resolutions required for the 40mm x 12mm label — a one-pixel rounding difference from the exact 10:3 ratio is expected and acceptable. */
-export const PNG_EXPORT_PRESETS: readonly PngExportPreset[] = [
-  { dpi: 300, width: mmToPx(LABEL_WIDTH_MM, 300), height: mmToPx(LABEL_HEIGHT_MM, 300) },
-  { dpi: 600, width: mmToPx(LABEL_WIDTH_MM, 600), height: mmToPx(LABEL_HEIGHT_MM, 600) },
-];
+/** Export sizes are derived from the exact physical label, including 203-DPI thermal printers. */
+export const PNG_EXPORT_PRESETS: readonly PngExportPreset[] = [203, 300, 600].map((dpi) => ({
+  dpi,
+  width: mmToPx(LABEL_DIMENSIONS.widthMm, dpi),
+  height: mmToPx(LABEL_DIMENSIONS.heightMm, dpi),
+}));
 
 function loadImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -40,12 +37,6 @@ function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-/**
- * Rasterizes the label into a transparent PNG at the requested print
- * resolution and triggers a browser download. The template, logo and
- * illustration `<image>` references are embedded as data URLs first so the
- * rasterization never depends on a live fetch to the site.
- */
 export async function exportLabelToPng(
   svg: SVGSVGElement,
   filename: string,
@@ -58,17 +49,15 @@ export async function exportLabelToPng(
 
   try {
     const image = await loadImage(svgUrl);
-
     const canvas = document.createElement("canvas");
     canvas.width = preset.width;
     canvas.height = preset.height;
-
     const ctx = canvas.getContext("2d");
-    if (!ctx) {
-      throw new Error("Não foi possível criar o contexto de desenho para exportação.");
-    }
+    if (!ctx) throw new Error("Não foi possível criar o contexto de desenho para exportação.");
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Opaque white paper, fully consistent with thermal printing.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
 
     const pngBlob = await canvasToPngBlob(canvas);

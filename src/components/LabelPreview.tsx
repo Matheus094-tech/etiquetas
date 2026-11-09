@@ -7,11 +7,7 @@ interface LabelPreviewProps {
   svgRef: RefObject<SVGSVGElement | null>;
 }
 
-/**
- * Renders the live label preview over a checkerboard backdrop so the user
- * can see which areas are transparent. The checkerboard is CSS only — it is
- * never part of the SVG tree, so it never leaks into an exported file.
- */
+/** The exact SVG used for downloads is displayed here, at its physical aspect ratio. */
 export function LabelPreview({ data, svgRef }: LabelPreviewProps) {
   return (
     <div className="label-preview">
@@ -28,8 +24,8 @@ export function LabelPreview({ data, svgRef }: LabelPreviewProps) {
         </div>
       </div>
       <p className="label-preview__hint">
-        O padrão quadriculado indica apenas, nesta pré-visualização, onde a etiqueta será
-        transparente — ele não faz parte do arquivo exportado.
+        Prévia proporcional de 40 × 12 mm. A impressão deve usar tamanho real (100%),
+        sem ajustar à página; escolha o PNG na resolução da sua impressora.
       </p>
     </div>
   );

@@ -9,21 +9,27 @@ const options = {
 };
 
 describe("fitText", () => {
-  it("keeps a short word on a single line at the largest size that fits", () => {
-    const result = fitText("LEGUMES", options);
-    expect(result.lines).toEqual(["LEGUMES"]);
-    expect(result.fontSize).toBeGreaterThanOrEqual(options.minFontSize);
+  it("keeps a short name in one line", () => {
+    expect(fitText("SAL", options).lines).toEqual(["SAL"]);
   });
 
-  it("breaks a long two-word name into two lines when it can't fit on one", () => {
-    const result = fitText("BATATA/PATINHO", options);
-    expect(result.lines.length).toBeGreaterThanOrEqual(1);
-    expect(result.lines.join("")).toContain("BATATA");
-    expect(result.lines.join("")).toContain("PATINHO");
+  it("splits when a two-line composition is physically more legible", () => {
+    const result = fitText("LEITE CONDENSADO", { ...options, maxTwoLineFontSize: 100 });
+    expect(result.lines.join(" ")).toBe("LEITE CONDENSADO");
+    expect(result.lines.length).toBeLessThanOrEqual(2);
   });
 
-  it("returns an empty single line for empty input instead of throwing", () => {
-    const result = fitText("", options);
-    expect(result.lines).toEqual([""]);
+  it("never returns a clipped long unbroken name at the preferred minimum", () => {
+    const result = fitText("SUPERCALIFRAGILISTICAMENTE", { ...options, allowWrap: false });
+    expect(result.lines).toEqual(["SUPERCALIFRAGILISTICAMENTE"]);
+    expect(result.fontSize).toBeLessThan(options.minFontSize);
+  });
+
+  it("supports nonwrapped quantities", () => {
+    expect(fitText("1,5kg", { ...options, allowWrap: false }).lines).toEqual(["1,5kg"]);
+  });
+
+  it("handles empty input", () => {
+    expect(fitText("", options)).toEqual({ lines: [""], fontSize: 120 });
   });
 });
