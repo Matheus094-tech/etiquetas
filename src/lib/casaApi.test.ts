@@ -109,6 +109,15 @@ describe("Casa Nexo no Neon", () => {
     const { changePassword } = await import("./casaApi");
     await expect(changePassword("senha-antiga", "senha-nova")).rejects.toThrow("indisponível");
   });
+  it("solicita JWT anônimo apenas para consulta de identidade antes do login", async () => {
+    const neonModule = await import("@neon/neon-js/supabase");
+    await import("./casaApi");
+    expect(neonModule.createClient).toHaveBeenCalledWith(
+      "https://ep-test.c-2.sa-east-1.aws.neon.tech/casa_nexo",
+      { auth: { allowAnonymous: true } },
+    );
+  });
+
   it("faz login pelo apelido em dispositivo novo, sem código de ativação", async () => {
     const alias = "matheus.setup.aaaaaaaaaaaaaaaaaaaaaaaa@users.casa-nexo.example";
     databaseMock.rpc.mockResolvedValueOnce({ data: alias, error: null });
