@@ -81,23 +81,116 @@ function rememberHouseholdAlias(email: string) {
   const match = /^(matheus|stephany)\.setup\.[a-f0-9]{24}@users\.casa-nexo\.example$/i.exec(email);
   if (match) localStorage.setItem(LOCAL_ALIAS_PREFIX + match[1].toLowerCase(), email.toLowerCase());
 }
-export function lookupHouseholdEmail(input: string, activationCode?: string): Promise<string> {
+/** Resolva o alias da conta já ativada no servidor, nunca por código do dispositivo.
+ *  A RPC só retorna a identidade técnica de usuários já ativados e é pública
+ *  para permitir o login antes de existir uma sessão.
+ */
+export async function lookupHouseholdEmail(input: string): Promise<string> {
   const username = normalizeHouseholdUsername(input);
   if (!["matheus", "stephany"].includes(username)) {
-    return Promise.reject(new Error("Usuário inválido."));
+    throw new Error("Usuário inválido.");
   }
-  const saved = localStorage.getItem(LOCAL_ALIAS_PREFIX + username);
-  if (saved && saved.endsWith("@users.casa-nexo.example")) return Promise.resolve(saved);
-  if (activationCode?.trim()) return activationEmail(username, activationCode);
-  return Promise.reject(new Error(
-    "Este dispositivo precisa do código de ativação na primeira entrada."
-  ));
+  const { data, error } = await client.rpc("household_login_email", {
+    p_username: username,
+  });
+  if (error) throw new Error("Não foi possível consultar a conta. Tente novamente.");
+  const validAlias = new RegExp(
+    `^${username}\\.setup\\.[a-f0-9]{24}@users\\.casa-nexo\\.example/** Cliente Casa Nexo com Neon Managed Better Auth + Neon Data API.
+ *  Usa somente a URL HTTPS pública; NUNCA inclua a connection string PostgreSQL no Vite.
+ */
+import { createClient } from "@neon/neon-js/supabase";
+import { activationEmail, normalizeHouseholdUsername } from "./householdUsers";
+
+export const NEON_URL = (import.meta.env.VITE_NEON_URL ?? "").replace(/\/$/, "");
+export const casaConfigured = Boolean(NEON_URL);
+const client = createClient(NEON_URL || "https://ep-placeholder.c-2.sa-east-1.aws.neon.tech/unused");
+const DATA_URL = NEON_URL.replace(".c-2.", ".apirest.c-2.");
+
+export type Session = {
+  access_token: string;
+  expires_at: number;
+  user: { id: string; email?: string };
+};
+
+export type House = { id: string; name: string; created_at: string };
+export type Location = {
+  id: string; house_id: string; name: string; kind: string; parent_id: string | null;
+};
+export type Product = {
+  id: string; house_id: string; name: string; brand: string | null;
+  category: string | null; barcode: string | null; package_description: string | null;
+  reorder_at: number; photo_path: string | null; notes: string | null;
+};
+export type StockLot = {
+  id: string; house_id: string; product_id: string; location_id: string | null;
+  quantity: number; expires_on: string | null; purchased_on: string | null;
+};
+export type InventoryItem = Product & { lots: StockLot[]; total: number };
+
+
+let session: Session | null = null;
+const listeners = new Set<(value: Session | null) => void>();
+export function getSession() { return session; }
+export function onSessionChange(callback: (current: Session | null) => void) {
+  listeners.add(callback);
+  return () => { listeners.delete(callback); };
 }
-export async function loginHousehold(input: string, password: string, activationCode?: string) {
-  const username = normalizeHouseholdUsername(input);
-  const email = await lookupHouseholdEmail(username, activationCode);
+function setSession(next: Session | null) {
+  session = next;
+  for (const callback of listeners) callback(next);
+}
+function fromAuthSession(raw: unknown, userOverride?: unknown): Session | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const u = (userOverride ?? s.user) as Record<string, unknown> | undefined;
+  if (!u?.id || typeof u.id !== "string") return null;
+  const accessToken = s.access_token;
+  if (typeof accessToken !== "string" || !accessToken) return null;
+  return {
+    access_token: accessToken,
+    expires_at: typeof s.expires_at === "number" ? s.expires_at * 1000 : Date.now() + 13 * 60_000,
+    user: { id: u.id, email: typeof u.email === "string" ? u.email : undefined },
+  };
+}
+export async function restoreSession() {
+  if (!casaConfigured) { setSession(null); return; }
+  try {
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    const restored = fromAuthSession(data.session, (data as { user?: unknown }).user);
+    if (restored?.user.email) rememberHouseholdAlias(restored.user.email);
+    setSession(restored);
+  } catch {
+    setSession(null);
+  }
+}
+export async function login(email: string, password: string) {
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  const logged = fromAuthSession(data.session, (data as { user?: unknown }).user);
+  if (!logged) {
+    await restoreSession();
+    if (!session) throw new Error("Não foi possível obter sessão do Neon.");
+  } else setSession(logged);
+}
+const LOCAL_ALIAS_PREFIX = "casa-nexo-neon-identity-v1-";
+function rememberHouseholdAlias(email: string) {
+  const match = /^(matheus|stephany)\.setup\.[a-f0-9]{24}@users\.casa-nexo\.example$/i.exec(email);
+  if (match) localStorage.setItem(LOCAL_ALIAS_PREFIX + match[1].toLowerCase(), email.toLowerCase());
+}
+,
+    "i",
+  );
+  if (typeof data !== "string" || !validAlias.test(data)) {
+    throw new Error("Conta ainda não ativada.");
+  }
+  return data.toLowerCase();
+}
+export async function loginHousehold(input: string, password: string) {
+  const email = await lookupHouseholdEmail(input);
   await login(email, password);
-  localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
+  // Conveniência para exibição e restauração, não é usada como requisito de login.
+  rememberHouseholdAlias(email);
 }
 
 export async function activateHouseholdAccount(input: string, code: string, password: string) {
