@@ -8,6 +8,7 @@ import { InventoryPage } from "./pages/InventoryPage";
 import { LabelsPage } from "./pages/LabelsPage";
 import { LocationsPage } from "./pages/LocationsPage";
 import { LoginPage } from "./pages/LoginPage";
+import { ActivatePage } from "./pages/ActivatePage";
 import { SettingsPage } from "./pages/SettingsPage";
 
 function RequireAuth() {
@@ -26,6 +27,7 @@ function FullCasaApp() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/ativar" element={<ActivatePage />} />
         <Route element={<RequireAuth />}>
           <Route element={<HouseProvider><HouseLayout /></HouseProvider>}>
             <Route index element={<DashboardPage />} />

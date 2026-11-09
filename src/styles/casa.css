@@ -64,14 +64,28 @@
 .casa-empty { text-align: center; color: var(--color-muted); padding: 2rem; }
 .casa-product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 1rem; }
 .casa-product { display: flex; flex-direction: column; overflow: hidden; background: #fff; border: 1px solid var(--color-border); border-radius: 13px; min-width: 0; }
-.casa-product__media { height: 156px; background: #eee9df; display: grid; place-items: center; overflow: hidden; }
-.casa-product__media img { width: 100%; height: 100%; object-fit: cover; }
-.casa-product__media span { font-size: 3rem; opacity: .6; }
+.casa-product__media { height: 180px; background: #f5f0e6; display: grid; place-items: center; overflow: hidden; }
+.casa-product__media img { width: 100%; height: 100%; object-fit: contain; }
+.casa-product__empty-photo {
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  gap: .35rem; width: 100%; height: 100%; padding: 1rem; text-align: center;
+  cursor: pointer; color: #366341; background: linear-gradient(135deg, #f6f3ec, #e8efe6);
+  border: 2px dashed #c2d5c1; border-radius: 9px; position: relative;
+}
+.casa-product__empty-photo:hover, .casa-product__empty-photo:focus-within { background: #e6efe3; }
+.casa-product__empty-photo:focus-within { outline: 2px solid #2f5d3a; outline-offset: -4px; }
+.casa-product__empty-photo-icon { font-size: 2.4rem; line-height: 1.15; }
+.casa-product__empty-photo strong { font-size: .93rem; }
+.casa-product__empty-photo small { font-size: .77rem; color: #657b67; }
+.casa-product__empty-photo input {
+  position: absolute; height: 1px; width: 1px; opacity: 0; overflow: hidden;
+}
 .casa-product__body { display: flex; flex-direction: column; gap: .75rem; padding: 1rem; flex: 1; }
 .casa-product__head { display: flex; justify-content: space-between; align-items: start; gap: .65rem; }
 .casa-product__head h3 { font-size: 1.03rem; line-height: 1.4; }
 .casa-product__head p { font-size: .8rem; color: var(--color-muted); margin-top: .2rem; overflow-wrap: anywhere; }
 .casa-product__place { color: var(--color-muted); font-size: .79rem; }
+.casa-product__category { color: #2f5d3a; font-size: .77rem; font-weight: 650; }
 .casa-badge { display: inline-flex; align-items: center; flex-shrink: 0; border-radius: 50px; padding: .26rem .5rem; font-size: .7rem; font-weight: 700; background: #e6f1e7; color: #275b36; white-space: nowrap; }
 .casa-badge--low { color: #855220; background: #fff1db; }
 .casa-product__footer { display: flex; justify-content: space-between; gap: .65rem; align-items: center; margin-top: auto; flex-wrap: wrap; }

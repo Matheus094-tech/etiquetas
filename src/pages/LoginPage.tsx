@@ -1,11 +1,11 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../app/CasaProviders";
-import { emailForUsername } from "../lib/householdUsers";
+import { loginHousehold } from "../lib/casaApi";
 import "../styles/casa.css";
 
 export function LoginPage() {
-  const { session, signIn } = useAuth();
+  const { session } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -19,12 +19,15 @@ export function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      const identity = emailForUsername(username);
-      await signIn(identity, password);
+      await loginHousehold(username, password);
       navigate("/", { replace: true });
-    } catch {
-      // Não revelar se o nome de usuário existe ou não.
-      setError("Usuário ou senha incorretos.");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "";
+      setError(message === "Conta ainda não ativada."
+        ? "Esta conta ainda não foi ativada. Use o link Primeiro acesso abaixo."
+        : message === "Não foi possível consultar a conta. Tente novamente."
+          ? message
+          : "Usuário ou senha incorretos.");
     } finally {
       setBusy(false);
     }
@@ -37,6 +40,7 @@ export function LoginPage() {
         <h1>Casa Nexo</h1>
         <p>O que temos, o que falta e o que precisamos comprar. Tudo em um só lugar.</p>
         <h2>Entrar na nossa Casa</h2>
+        <p className="casa-hint">Acesse em qualquer dispositivo com seu usuário e senha.</p>
         <form className="casa-form" onSubmit={submit}>
           <label htmlFor="casa-username">
             Usuário
@@ -58,8 +62,9 @@ export function LoginPage() {
           </button>
         </form>
         <p className="casa-hint" style={{ marginTop: "1rem" }}>
-          Acesso reservado aos moradores. As contas são criadas pelo administrador.
+          Acesso reservado aos moradores. Já ativou sua conta?
         </p>
+        <Link to="/ativar" className="casa-link">Primeiro acesso? Criar minha senha →</Link>
       </div>
     </main>
   );

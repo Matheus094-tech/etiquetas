@@ -1,13 +1,21 @@
-/** Casa Nexo API: acesso ao Supabase via REST, sem credenciais de servidor no cliente. */
-export const SUPABASE_URL = (import.meta.env.VITE_SUPABASE_URL ?? "").replace(/\/$/, "");
-const API_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-  || import.meta.env.VITE_SUPABASE_ANON_KEY || "";
-export const casaConfigured = Boolean(SUPABASE_URL && API_KEY);
-const SESSION_KEY = "casa-nexo-auth-session-v1";
+/** Cliente Casa Nexo com Neon Managed Better Auth + Neon Data API.
+ *  Usa somente a URL HTTPS pública; NUNCA inclua a connection string PostgreSQL no Vite.
+ */
+import { createClient } from "@neon/neon-js/supabase";
+import { activationEmail, normalizeHouseholdUsername } from "./householdUsers";
+
+export const NEON_URL = (import.meta.env.VITE_NEON_URL ?? "").replace(/\/$/, "");
+export const casaConfigured = Boolean(NEON_URL);
+// A Data API exige JWT até em consultas pré-login. Um token anônimo
+// só dá acesso a funções explicitamente liberadas para o papel anonymous.
+const client = createClient(
+  NEON_URL || "https://ep-placeholder.c-2.sa-east-1.aws.neon.tech/unused",
+  { auth: { allowAnonymous: true } },
+);
+const DATA_URL = NEON_URL.replace(".c-2.", ".apirest.c-2.");
 
 export type Session = {
   access_token: string;
-  refresh_token: string;
   expires_at: number;
   user: { id: string; email?: string };
 };
@@ -27,168 +35,176 @@ export type StockLot = {
 };
 export type InventoryItem = Product & { lots: StockLot[]; total: number };
 
-function readSession(): Session | null {
-  try {
-    const value = localStorage.getItem(SESSION_KEY);
-    if (!value) return null;
-    const parsed = JSON.parse(value) as Session;
-    return parsed.access_token && parsed.refresh_token && parsed.user?.id ? parsed : null;
-  } catch {
-    return null;
-  }
-}
 
-let session: Session | null = typeof window === "undefined" ? null : readSession();
-const listeners = new Set<(current: Session | null) => void>();
+let session: Session | null = null;
+const listeners = new Set<(value: Session | null) => void>();
 export function getSession() { return session; }
-export function onSessionChange(listener: (current: Session | null) => void) {
-  listeners.add(listener);
-  return () => { listeners.delete(listener); };
+export function onSessionChange(callback: (current: Session | null) => void) {
+  listeners.add(callback);
+  return () => { listeners.delete(callback); };
 }
-function saveSession(next: Session | null) {
+function setSession(next: Session | null) {
   session = next;
-  if (next) localStorage.setItem(SESSION_KEY, JSON.stringify(next));
-  else localStorage.removeItem(SESSION_KEY);
-  listeners.forEach((listener) => listener(next));
+  for (const callback of listeners) callback(next);
 }
-function fromAuthResponse(raw: {
-  access_token: string; refresh_token: string; expires_in: number;
-  user: { id: string; email?: string };
-}): Session {
+function fromAuthSession(raw: unknown, userOverride?: unknown): Session | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const u = (userOverride ?? s.user) as Record<string, unknown> | undefined;
+  if (!u?.id || typeof u.id !== "string") return null;
+  const accessToken = s.access_token;
+  if (typeof accessToken !== "string" || !accessToken) return null;
   return {
-    access_token: raw.access_token,
-    refresh_token: raw.refresh_token,
-    expires_at: Date.now() + raw.expires_in * 1000,
-    user: raw.user,
+    access_token: accessToken,
+    expires_at: typeof s.expires_at === "number" ? s.expires_at * 1000 : Date.now() + 13 * 60_000,
+    user: { id: u.id, email: typeof u.email === "string" ? u.email : undefined },
   };
 }
-async function parseResponse<T>(response: Response): Promise<T> {
-  const body = await response.text();
-  let result: unknown = null;
-  try { result = body ? JSON.parse(body) : null; } catch { result = body; }
-  if (!response.ok) {
-    const detail = result && typeof result === "object"
-      ? result as Record<string, unknown> : {};
-    const reason = detail.msg || detail.message || detail.error_description || detail.error;
-    throw new Error(typeof reason === "string" ? reason : `Erro HTTP ${response.status}`);
+export async function restoreSession() {
+  if (!casaConfigured) { setSession(null); return; }
+  try {
+    const { data, error } = await client.auth.getSession();
+    if (error) throw error;
+    const restored = fromAuthSession(data.session, (data as { user?: unknown }).user);
+    if (restored?.user.email) rememberHouseholdAlias(restored.user.email);
+    setSession(restored);
+  } catch {
+    setSession(null);
   }
-  return result as T;
 }
-async function authRequest<T>(path: string, data: unknown, token?: string): Promise<T> {
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
-    method: "POST",
-    headers: {
-      apikey: API_KEY,
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify(data),
-  });
-  return parseResponse<T>(response);
-}
-type AuthPayload = {
-  access_token: string; refresh_token: string; expires_in: number;
-  user: { id: string; email?: string };
-};
 export async function login(email: string, password: string) {
-  const result = await authRequest<AuthPayload>(
-    "token?grant_type=password", { email, password }
-  );
-  saveSession(fromAuthResponse(result));
+  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  if (error) throw new Error(error.message);
+  const logged = fromAuthSession(data.session, (data as { user?: unknown }).user);
+  if (!logged) {
+    await restoreSession();
+    if (!session) throw new Error("Não foi possível obter sessão do Neon.");
+  } else setSession(logged);
 }
-export async function register(email: string, password: string) {
-  const result = await authRequest<Partial<AuthPayload>>("signup", { email, password });
-  if (result.access_token && result.refresh_token && result.expires_in && result.user) {
-    saveSession(fromAuthResponse(result as AuthPayload));
-    return true;
+const LOCAL_ALIAS_PREFIX = "casa-nexo-neon-identity-v1-";
+function rememberHouseholdAlias(email: string) {
+  const match = /^(matheus|stephany)\.setup\.[a-f0-9]{24}@users\.casa-nexo\.example$/i.exec(email);
+  if (match) localStorage.setItem(LOCAL_ALIAS_PREFIX + match[1].toLowerCase(), email.toLowerCase());
+}
+/** Resolve a identidade de moradores ativados sem exigir código por dispositivo. */
+export async function lookupHouseholdEmail(input: string): Promise<string> {
+  const username = normalizeHouseholdUsername(input);
+  if (!["matheus", "stephany"].includes(username)) {
+    throw new Error("Usuário inválido.");
   }
-  return false; // Confirmação de e-mail exigida no projeto Supabase.
-}
-let refreshPromise: Promise<void> | null = null;
-async function refreshSession() {
-  if (!session) throw new Error("Entre na sua conta.");
-  if (!refreshPromise) {
-    const refreshToken = session.refresh_token;
-    refreshPromise = (async () => {
-      try {
-        const result = await authRequest<AuthPayload>(
-          "token?grant_type=refresh_token", { refresh_token: refreshToken }
-        );
-        saveSession(fromAuthResponse(result));
-      } catch {
-        saveSession(null);
-        throw new Error("Sua sessão expirou. Entre novamente.");
-      }
-    })().finally(() => { refreshPromise = null; });
-  }
-  await refreshPromise;
-}
-export async function validAccessToken(): Promise<string> {
-  if (!session) throw new Error("Entre na sua conta.");
-  if (session.expires_at <= Date.now() + 60_000) await refreshSession();
-  if (!session) throw new Error("Sua sessão expirou.");
-  return session.access_token;
-}
-/** Troca a senha da conta autenticada, sem usar e-mail de recuperação. */
-export async function changePassword(currentPassword: string, nextPassword: string) {
-  const current = getSession();
-  if (!current?.user.email) throw new Error("Entre novamente na sua conta.");
-  if (nextPassword.length < 12) throw new Error("A nova senha deve ter pelo menos 12 caracteres.");
-  if (nextPassword === currentPassword) throw new Error("Escolha uma senha diferente da anterior.");
-
-  // Verifica a senha atual na API de autenticação antes de permitir a troca.
-  const verified = await authRequest<AuthPayload>(
-    "token?grant_type=password",
-    { email: current.user.email, password: currentPassword },
-  );
-  if (verified.user.id !== current.user.id) {
-    throw new Error("Falha ao validar a identidade da conta.");
-  }
-  const response = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
-    method: "PUT",
-    headers: {
-      apikey: API_KEY,
-      Authorization: `Bearer ${await validAccessToken()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ password: nextPassword, current_password: currentPassword }),
+  const { data, error } = await client.rpc("household_login_email", {
+    p_username: username,
   });
-  await parseResponse(response);
+  if (error) throw new Error("Não foi possível consultar a conta. Tente novamente.");
+  const validAlias = new RegExp(
+    "^" + username + "\\.setup\\.[a-f0-9]{24}@users\\.casa-nexo\\.example" + "$",
+    "i",
+  );
+  if (typeof data !== "string" || !validAlias.test(data)) {
+    throw new Error("Conta ainda não ativada.");
+  }
+  return data.toLowerCase();
+}
+export async function loginHousehold(input: string, password: string) {
+  const email = await lookupHouseholdEmail(input);
+  await login(email, password);
+  rememberHouseholdAlias(email);
+}
+
+export async function activateHouseholdAccount(input: string, code: string, password: string) {
+  const username = normalizeHouseholdUsername(input);
+  if (!["matheus", "stephany"].includes(username)) throw new Error("Morador inválido.");
+  if (password.length < 8) throw new Error("Use uma senha com pelo menos 8 caracteres.");
+  const cleanCode = code.trim();
+  if (!cleanCode || cleanCode.length > 128) throw new Error("Código de ativação inválido.");
+  const email = await activationEmail(username, cleanCode);
+  // A senha é enviada somente ao Neon Auth, nunca à nossa API própria.
+  const { error } = await client.auth.signUp({
+    email,
+    password,
+    options: { data: { name: username === "matheus" ? "Matheus" : "Stephany" } },
+  });
+  if (error) {
+    // Caso a conta tenha sido criada, mas a associação falhou por rede,
+    // o morador pode repetir com a mesma senha e concluir a ativação.
+    const existing = await client.auth.signInWithPassword({ email, password });
+    if (existing.error) throw new Error("Não foi possível criar a conta. Tente novamente.");
+  }
+  await login(email, password);
+  rememberHouseholdAlias(email);
+  // Uma ativação pode ter sido concluída no banco e a resposta perdida;
+  // repetir nesse caso deve só restaurar o alias, nunca criar outra Casa.
+  try {
+    const houses = await getHouses();
+    if (houses.length > 0) {
+      localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
+      return;
+    }
+  } catch {
+    // Se a consulta ainda não estiver pronta, a RPC segura fará a vinculação.
+  }
+  try {
+    const { error: claimError } = await client.rpc("claim_household_activation", {
+      p_username: username, p_code: cleanCode,
+    });
+    if (claimError) throw new Error(claimError.message);
+    localStorage.setItem(LOCAL_ALIAS_PREFIX + username, email);
+  } catch (reason) {
+    throw new Error(reason instanceof Error
+      ? `Conta criada, mas não vinculada à Casa: ${reason.message}. Repita o procedimento com a mesma senha.`
+      : "Conta criada, mas não vinculada à Casa. Repita com a mesma senha.");
+  }
 }
 
 export async function logout() {
-  const token = session?.access_token;
-  saveSession(null);
-  if (token) {
-    try { await authRequest("logout", {}, token); } catch { /* sessão local já removida */ }
-  }
+  try { await client.auth.signOut(); }
+  finally { setSession(null); }
+}
+/** Com identidades técnicas sem e-mail real, a recuperação precisa de fluxo
+ * administrativo no Neon Auth. Não oferecer alteração local insegura.
+ */
+export async function changePassword(_currentPassword: string, _nextPassword: string): Promise<void> {
+  void _currentPassword; void _nextPassword;
+  throw new Error("Troca de senha ainda indisponível no Neon. Solicite uma redefinição administrativa.");
+}
+async function token(): Promise<string> {
+  const { data, error } = await client.auth.getSession();
+  if (error || !data.session) { setSession(null); throw new Error("Sua sessão expirou. Entre novamente."); }
+  const next = fromAuthSession(data.session, (data as { user?: unknown }).user);
+  if (!next) throw new Error("Sessão sem token de autorização.");
+  setSession(next);
+  return next.access_token;
 }
 export async function apiRequest<T>(
-  method: "GET" | "POST" | "PATCH" | "DELETE",
-  path: string,
-  body?: unknown
+  method: "GET" | "POST" | "PATCH" | "DELETE", path: string, body?: unknown
 ): Promise<T> {
-  const token = await validAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+  const bearer = await token();
+  const res = await fetch(`${DATA_URL}/rest/v1/${path}`, {
     method,
     headers: {
-      apikey: API_KEY,
-      Authorization: `Bearer ${token}`,
-      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      Authorization: `Bearer ${bearer}`,
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       Prefer: "return=representation",
     },
-    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  if (response.status === 401) saveSession(null);
-  return parseResponse<T>(response);
+  const raw = await res.text();
+  let json: unknown;
+  try { json = raw ? JSON.parse(raw) : null; } catch { json = raw; }
+  if (!res.ok) {
+    const message = json && typeof json === "object" ? (json as Record<string, unknown>).message : null;
+    throw new Error(typeof message === "string" ? message : `Erro HTTP ${res.status}`);
+  }
+  return json as T;
 }
 function params(values: Record<string, string>) {
   return new URLSearchParams(values).toString();
 }
 export async function getHouses() {
-  return apiRequest<House[]>("GET", "houses?" + params({
-    select: "id,name,created_at", order: "created_at.asc",
-  }));
+  const { data, error } = await client.from("houses")
+    .select("id,name,created_at").order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as House[];
 }
 export async function createHouse(name: string) {
   const user = getSession()?.user;
@@ -267,58 +283,45 @@ export async function changeStock(lotId: string, delta: number, reason: "compra"
     p_lot_id: lotId, p_delta: delta, p_reason: reason,
   });
 }
-const BUCKET = "household-media";
-function objectPath(path: string) {
-  return path.split("/").map(encodeURIComponent).join("/");
+
+export async function validAccessToken(): Promise<string> {
+  return token();
 }
-export async function uploadProductPhoto(houseId: string, productId: string, file: File) {
-  const formats: Record<string, string> = {
-    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic",
-  };
-  const extension = formats[file.type];
-  if (!extension) throw new Error("Use uma fotografia JPG, PNG ou WebP (HEIC suportado quando aceito pelo navegador).");
-  if (file.size > 8 * 1024 * 1024) throw new Error("A foto deve ter até 8 MB.");
-  const path = `${houseId}/products/${productId}-${crypto.randomUUID()}.${extension}`;
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${objectPath(path)}`, {
+export async function uploadProductPhoto(houseId: string, productId: string, file: File): Promise<string> {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    throw new Error("Use uma foto JPG, PNG ou WebP.");
+  }
+  if (file.size === 0 || file.size > 8 * 1024 * 1024) {
+    throw new Error("A foto deve ter até 8 MB.");
+  }
+  const query = new URLSearchParams({ house_id: houseId, product_id: productId });
+  const response = await fetch(`/.netlify/functions/product-photo?${query}`, {
     method: "POST",
     headers: {
-      apikey: API_KEY,
-      Authorization: `Bearer ${await validAccessToken()}`,
+      Authorization: `Bearer ${await token()}`,
       "Content-Type": file.type,
-      "x-upsert": "false",
     },
     body: file,
   });
-  await parseResponse(response);
-  try {
-    await apiRequest("PATCH", "products?" + params({ id: `eq.${productId}`, house_id: `eq.${houseId}` }), {
-      photo_path: path,
-    });
-  } catch (error) {
-    // Remover um upload órfão em caso de falha ao associar produto.
-    await deleteProductPhoto(path).catch(() => {});
-    throw error;
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.error || `Falha ao enviar foto (${response.status}).`);
   }
+  const { path } = await response.json() as { path: string };
+  await apiRequest("PATCH", "products?" + params({
+    id: `eq.${productId}`, house_id: `eq.${houseId}`,
+  }), { photo_path: path });
   return path;
 }
-async function deleteProductPhoto(path: string) {
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${objectPath(path)}`, {
-    method: "DELETE",
-    headers: { apikey: API_KEY, Authorization: `Bearer ${await validAccessToken()}` },
+export async function signedProductPhoto(path: string): Promise<string> {
+  // Formato privado: <house_id>/products/<product_id>-<uuid>.ext
+  const match = path.match(/^([0-9a-f-]{36})\/products\/([0-9a-f-]{36})-[0-9a-f-]{36}\.(jpg|png|webp)$/i);
+  if (!match) throw new Error("Caminho de fotografia inválido.");
+  const query = new URLSearchParams({ house_id: match[1], product_id: match[2], path });
+  const response = await fetch(`/.netlify/functions/product-photo?${query}`, {
+    headers: { Authorization: `Bearer ${await token()}` },
   });
-  await parseResponse(response);
-}
-export async function signedProductPhoto(path: string) {
-  const token = await validAccessToken();
-  const response = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${BUCKET}/${objectPath(path)}`, {
-    method: "POST",
-    headers: {
-      apikey: API_KEY, Authorization: `Bearer ${token}`, "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ expiresIn: 600 }),
-  });
-  const data = await parseResponse<{ signedURL: string }>(response);
-  return new URL(data.signedURL.startsWith("/storage/v1/")
-    ? data.signedURL
-    : `/storage/v1${data.signedURL}`, SUPABASE_URL).toString();
+  if (!response.ok) throw new Error("Não foi possível carregar fotografia privada.");
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }
