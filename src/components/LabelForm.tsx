@@ -55,7 +55,7 @@ export function LabelForm({ data, onChange }: LabelFormProps) {
           onChange={handleDescriptionChange} placeholder="Ex.: moído, cozido, desfiado" autoComplete="off" />
       </div>
       <div className="label-form__field">
-        <label htmlFor="label-weight">Quantidade <span aria-hidden="true">*</span></label>
+        <label htmlFor="label-weight">Peso / quantidade <span aria-hidden="true">*</span></label>
         <div className="label-form__weight-input">
           <input id="label-weight" name="weight" type="text" inputMode="text" value={data.weight}
             onChange={handleWeightChange} onBlur={handleWeightBlur} placeholder="700g, 1,5kg, 500ml ou 2L"
