@@ -9,7 +9,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [activationCode, setActivationCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -20,13 +19,15 @@ export function LoginPage() {
     setError("");
     setBusy(true);
     try {
-      await loginHousehold(username, password, activationCode);
+      await loginHousehold(username, password);
       navigate("/", { replace: true });
     } catch (reason) {
-      const needsCode = reason instanceof Error && reason.message.includes("código de ativação");
-      setError(needsCode
-        ? "No primeiro acesso neste dispositivo, abra a opção de código abaixo e informe seu código de ativação."
-        : "Usuário ou senha incorretos.");
+      const message = reason instanceof Error ? reason.message : "";
+      setError(message === "Conta ainda não ativada."
+        ? "Esta conta ainda não foi ativada. Use o link Primeiro acesso abaixo."
+        : message === "Não foi possível consultar a conta. Tente novamente."
+          ? message
+          : "Usuário ou senha incorretos.");
     } finally {
       setBusy(false);
     }
@@ -39,6 +40,7 @@ export function LoginPage() {
         <h1>Casa Nexo</h1>
         <p>O que temos, o que falta e o que precisamos comprar. Tudo em um só lugar.</p>
         <h2>Entrar na nossa Casa</h2>
+        <p className="casa-hint">Acesse em qualquer dispositivo com seu usuário e senha.</p>
         <form className="casa-form" onSubmit={submit}>
           <label htmlFor="casa-username">
             Usuário
@@ -54,17 +56,6 @@ export function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               required placeholder="Sua senha" />
           </label>
-          <details>
-            <summary className="casa-link" style={{ cursor: "pointer" }}>
-              Primeiro login neste dispositivo? Tenho um código
-            </summary>
-            <label>Código de ativação (opcional nos próximos acessos)
-              <input type="text" autoCapitalize="none" autoCorrect="off"
-                autoComplete="off" value={activationCode}
-                onChange={(event) => setActivationCode(event.target.value)}
-                placeholder="Código que recebeu na ativação" />
-            </label>
-          </details>
           {error && <p className="casa-alert casa-alert--error" role="alert">{error}</p>}
           <button className="casa-primary" disabled={busy}>
             {busy ? "Entrando…" : "Entrar"}
