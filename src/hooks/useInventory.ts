@@ -39,28 +39,38 @@ export function useInventory(houseId: string) {
     };
   }, [reload]);
 
-  // As URLs são privadas e expiram; renová-las evita imagens quebradas após 10 min.
+  // As fotos são baixadas por endpoint autenticado. URLs temporárias do navegador
+  // precisam ser revogadas para não acumular imagens em memória.
   const photoPathsKey = items.map((item) => item.photo_path).filter(Boolean).join("|");
   useEffect(() => {
     let active = true;
+    const allocated = new Set<string>();
     const paths = Array.from(new Set(photoPathsKey.split("|").filter(Boolean)));
-    async function updateSignedUrls() {
+
+    async function loadPhotos() {
       const rows = await Promise.all(paths.map(async (path) => {
         try { return [path, await signedProductPhoto(path)] as const; }
         catch { return null; }
       }));
-      if (!active) return;
-      setPhotoUrls(Object.fromEntries(rows.filter(
-        (row): row is readonly [string, string] => row !== null
-      )));
+      const urls = rows.filter((row): row is readonly [string, string] => row !== null);
+      if (!active) {
+        for (const [, url] of urls) URL.revokeObjectURL(url);
+        return;
+      }
+      const previousUrls = Array.from(allocated);
+      allocated.clear();
+      for (const [, url] of urls) allocated.add(url);
+      setPhotoUrls(Object.fromEntries(urls));
+      window.setTimeout(() => previousUrls.forEach(URL.revokeObjectURL), 50);
     }
-    void updateSignedUrls();
-    const id = window.setInterval(() => { void updateSignedUrls(); }, 8 * 60_000);
-    window.addEventListener("focus", updateSignedUrls);
+
+    void loadPhotos();
+    const onFocus = () => { void loadPhotos(); };
+    window.addEventListener("focus", onFocus);
     return () => {
       active = false;
-      window.clearInterval(id);
-      window.removeEventListener("focus", updateSignedUrls);
+      window.removeEventListener("focus", onFocus);
+      allocated.forEach(URL.revokeObjectURL);
     };
   }, [photoPathsKey]);
 

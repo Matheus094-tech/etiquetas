@@ -1,21 +1,28 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
-  createHouse, getHouses, getSession, login, logout, onSessionChange,
+  createHouse, getHouses, getSession, initializeSession, login, logout, onSessionChange,
   redeemInvite, type House, type Session,
 } from "../lib/casaApi";
 
 type AuthValue = {
   session: Session | null;
+  authReady: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 const AuthContext = createContext<AuthValue | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState(getSession);
+  const [authReady, setAuthReady] = useState(false);
   useEffect(() => onSessionChange(setSession), []);
+  useEffect(() => {
+    let active = true;
+    void initializeSession().finally(() => { if (active) setAuthReady(true); });
+    return () => { active = false; };
+  }, []);
   return (
     <AuthContext.Provider value={{
-      session, signIn: login, signOut: logout,
+      session, authReady, signIn: login, signOut: logout,
     }}>
       {children}
     </AuthContext.Provider>

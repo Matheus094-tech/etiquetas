@@ -1,19 +1,19 @@
 /**
  * Login simplificado do Casa Nexo.
  *
- * Supabase Auth exige um identificador de e-mail ou telefone para senha.
+ * Neon Auth exige um identificador de e-mail ou telefone para senha.
  * Os endereços abaixo são identificadores técnicos RESERVADOS (domínio .example),
  * sem caixa de e-mail e sem possibilidade de recuperação automática.
  * Nunca armazenar senhas neste arquivo nem no frontend.
  *
- * Contas são provisionadas pelo administrador via Supabase Auth.
+ * Contas provisionadas pelo Neon Managed Better Auth. Não armazenar senhas no código.
  */
 export const HOUSEHOLD_USERNAMES = ["matheus", "stephany"] as const;
 export type HouseholdUsername = (typeof HOUSEHOLD_USERNAMES)[number];
 
 const IDENTITIES: Record<HouseholdUsername, string> = {
-  matheus: "matheus@users.casa-nexo.example",
-  stephany: "stephany@users.casa-nexo.example",
+  matheus: "matheus.login@users.casa-nexo.example",
+  stephany: "stephany.login@users.casa-nexo.example",
 };
 
 export function normalizeHouseholdUsername(value: string): string {
